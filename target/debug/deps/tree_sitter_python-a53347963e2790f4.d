@@ -1,8 +1,0 @@
-/home/jaime/me/context-engine/target/debug/deps/tree_sitter_python-a53347963e2790f4.d: /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/lib.rs /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../src/node-types.json /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../queries/highlights.scm /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../queries/tags.scm
-
-/home/jaime/me/context-engine/target/debug/deps/libtree_sitter_python-a53347963e2790f4.rmeta: /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/lib.rs /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../src/node-types.json /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../queries/highlights.scm /home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../queries/tags.scm
-
-/home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/lib.rs:
-/home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../src/node-types.json:
-/home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../queries/highlights.scm:
-/home/jaime/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tree-sitter-python-0.23.6/bindings/rust/../../queries/tags.scm:
