@@ -1,0 +1,3 @@
+interface:
+  display_name: "Using Git Worktrees"
+  short_description: "Isolated worktrees: location, ignore checks, setup, baseline"

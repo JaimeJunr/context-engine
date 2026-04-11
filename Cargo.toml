@@ -1,0 +1,41 @@
+[package]
+name = "context-engine"
+version = "0.1.0"
+edition = "2021"
+default-run = "ctx"
+
+[[bin]]
+name = "ctx"
+path = "src/main.rs"
+
+[lib]
+name = "context_engine"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+rayon = "1.10"
+tree-sitter = "0.24"
+tree-sitter-ruby = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-typescript = "0.23"
+rusqlite = { version = "0.31", features = ["bundled"] }
+ignore = "0.4"
+sha2 = "0.10"
+regex = "1.10"
+serde_json = "1.0"
+anyhow = "1.0"
+dirs = "5.0"
+hex = "0.4"
+tree-sitter-language = "0.1"
+
+[dev-dependencies]
+serde_json = "1.0"
+
+[build-dependencies]
+cc = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
