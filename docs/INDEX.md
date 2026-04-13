@@ -1,42 +1,66 @@
 # Documentação — Context Engine
 
-> **Objetivo**: Guia central para navegação e compreensão da documentação do `ctx` (context-engine).
+> **Objetivo:** Guia central para `ctx` (repo map curado) + `ctx-search` (RAG local).
+
+---
 
 ## Índice de Documentação
 
-### Produto e Visão
+### 🚀 Para Começar
 
-- [Produto](produto.md) — por que o ctx existe, evolução, visão de futuro (3 Horizontes)
-- [Roadmap](roadmap.md) — próximas features priorizadas por horizonte
+- **[`README.md`](../README.md)** — Quick start: instalação, exemplos `ctx` e `ctx-search`
+- **[Produto](produto.md)** — Por que existe, status H1-H3, features implementadas vs roadmap
 
-### Engenharia
+### 🏗️ Para Contribuidores
 
-- [Patterns](patterns.md) — filosofia, invariantes, como adicionar comandos e linguagens
-- [Referência Técnica](arquitetura.md) — pipeline completo, módulos, cache, ranking, CLI
+- **[Patterns](patterns.md)** — Invariantes (token budget + SQLite), modularidade, como estender
+- **[Arquitetura](arquitetura.md)** — Dois pipelines, módulos, CLI, troubleshooting
 
-### Features Implementadas
+### 📚 Features Implementadas
 
-- [Especificação RAG](especificacao-rag.md) — sistema de recuperação semântica de conhecimento, regras de negócio, entidades
-- [Implementação RAG](implementacao-rag.md) — arquivos, testes, uso básico do módulo catalog
+#### `ctx` — Repo Map
+- **[Arquitetura: pipeline ctx](arquitetura.md#1️⃣-pipeline-ctx-repo-map)** — Scanner → Extractor → Ranking → Output
+- **[Patterns: composição](patterns.md#padrões-de-código)** — Como reutilizar Scanner/Extractor em novos comandos
 
-### Pesquisa
+#### `ctx-search` — RAG Local
+- **[Especificação RAG](especificacao-rag.md)** — Regras de negócio, conceitos entrada/saída
+- **[Implementação RAG](implementacao-rag.md)** — Arquivos criados, testes, CLI
+- **[Arquitetura: pipeline ctx-search](arquitetura.md#2️⃣-pipeline-ctx-search-recuperação-semântica)** — Chunker → Indexer → Embedder → Searcher → Reranker
 
-- [State of the Art: Code Search](pesquisa/code-search-state-of-art.md) — survey de técnicas de busca em código
-- [Decisões de Implementação](pesquisa/decisoes-implementacao.md) — trade-offs e escolhas técnicas
+### 🔬 Pesquisa & Decisões
+
+- **[State of the Art: Code Search](pesquisa/code-search-state-of-art.md)** — Survey de BM25, embeddings, PageRank
+- **[Decisões de Implementação](pesquisa/decisoes-implementacao.md)** — Trade-offs técnicos
+
+---
 
 ## Como Usar Esta Documentação
 
-| Se você quer... | Leia |
-|---|---|
-| Entender o projeto do zero | [`README.md`](../README.md) → [`produto.md`](produto.md) |
-| Contribuir com código | [`patterns.md`](patterns.md) → [`arquitetura.md`](arquitetura.md) |
-| Adicionar uma linguagem | [`patterns.md`](patterns.md) — seção "Como adicionar suporte a nova linguagem" |
-| Adicionar um novo comando | [`patterns.md`](patterns.md) — seção "Como adicionar um novo comando" |
-| Entender decisões de design | [`pesquisa/decisoes-implementacao.md`](pesquisa/decisoes-implementacao.md) |
-| Planejar o que vem a seguir | [`produto.md`](produto.md) + [`roadmap.md`](roadmap.md) |
+| Cenário | Comece Aqui | Depois |
+|---------|-------------|--------|
+| **Usar `ctx` ou `ctx-search`** | [`README.md`](../README.md) | [`Arquitetura`](arquitetura.md) para detalhes |
+| **Entender o projeto** | [`Produto`](produto.md) | [`Patterns`](patterns.md) (filosofia) |
+| **Implementar nova feature** | [`Patterns`](patterns.md) → [`Arquitetura`](arquitetura.md) | Código + testes |
+| **Adicionar linguagem** | [`Patterns` § "Como Adicionar Suporte"](patterns.md#como-adicionar-suporte-a-nova-linguagem) | `src/extractors/<lang>.rs` |
+| **Estender ctx-search** | [`Patterns` § "Como Estender ctx-search"](patterns.md#como-estender-ctx-search-novos-subcomandos) | `catalog/mod.rs` |
+| **Debug/Troubleshooting** | [`Arquitetura` § "Troubleshooting"](arquitetura.md#troubleshooting) | Logs, SQLite cache |
+| **Entender decisões técnicas** | [`Pesquisa`](pesquisa/) | PRs relevantes no git |
 
-## Contribuindo com a Documentação
+---
 
-- Mantenha documentação atualizada junto com o código
-- Use português para documentação, inglês para código
-- Atualize este índice ao adicionar novos documentos
+## Status Atual
+
+✅ **H1 — Core:** `ctx` + `ctx-search` implementados, modular, testado  
+🔄 **H2 — RAG:** BM25 + embeddings + re-ranking, pronto para produção  
+🔄 **H3 — MCP server + output compression:** roadmap  
+
+Veja [`Produto § "Status Atual"`](produto.md#status-atual--mapa-de-features) para features detail.
+
+---
+
+## Contribuindo
+
+- **Documentação:** português, código: inglês
+- **Atualizar junto:** PR muda código + docs/especificacao-rag.md ou docs/arquitetura.md conforme necessário
+- **Adicionar doc novo?** Atualize este INDEX.md com link
+- **Mudança arquitetural?** Atualizar [`Patterns`](patterns.md) e/ou [`Arquitetura`](arquitetura.md)
