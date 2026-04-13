@@ -14,6 +14,11 @@
 - [Patterns](patterns.md) — filosofia, invariantes, como adicionar comandos e linguagens
 - [Referência Técnica](arquitetura.md) — pipeline completo, módulos, cache, ranking, CLI
 
+### Features Implementadas
+
+- [Especificação RAG](especificacao-rag.md) — sistema de recuperação semântica de conhecimento, regras de negócio, entidades
+- [Implementação RAG](implementacao-rag.md) — arquivos, testes, uso básico do módulo catalog
+
 ### Pesquisa
 
 - [State of the Art: Code Search](pesquisa/code-search-state-of-art.md) — survey de técnicas de busca em código
