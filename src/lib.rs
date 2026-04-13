@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod catalog;
 pub mod extractors;
 pub mod output;
 pub mod ranking;
@@ -109,7 +110,9 @@ fn build_pagerank_ranked(
         for sig in sigs {
             // Extract symbol name (last word before parens/spaces)
             let sym = sig.split_whitespace().last().unwrap_or("").to_string();
-            let sym = sym.trim_end_matches(|c: char| !c.is_alphanumeric()).to_string();
+            let sym = sym
+                .trim_end_matches(|c: char| !c.is_alphanumeric())
+                .to_string();
             if !sym.is_empty() {
                 symbol_to_files.entry(sym).or_default().push(path.clone());
             }
@@ -128,10 +131,8 @@ fn build_pagerank_ranked(
     }
 
     // Build personalization vector
-    let mut personalization: HashMap<PathBuf, f64> = all_nodes
-        .iter()
-        .map(|n| (n.clone(), 1.0))
-        .collect();
+    let mut personalization: HashMap<PathBuf, f64> =
+        all_nodes.iter().map(|n| (n.clone(), 1.0)).collect();
 
     for (path, _) in bm25_top.iter().take(5) {
         if let Some(v) = personalization.get_mut(path) {
@@ -156,14 +157,7 @@ fn build_pagerank_ranked(
         .map(|(k, v)| (k, v / total))
         .collect();
 
-    let scores = ranking::pagerank::pagerank_pure(
-        &graph,
-        &predecessors,
-        &norm,
-        0.85,
-        200,
-        1e-6,
-    );
+    let scores = ranking::pagerank::pagerank_pure(&graph, &predecessors, &norm, 0.85, 200, 1e-6);
 
     let mut ranked_ppr: Vec<(PathBuf, f64)> = scores.into_iter().collect();
     ranked_ppr.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));

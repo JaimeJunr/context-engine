@@ -43,7 +43,12 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
         _ => {}
     }
 
-    let inner = depth + if node.kind() == "class_definition" { 1 } else { 0 };
+    let inner = depth
+        + if node.kind() == "class_definition" {
+            1
+        } else {
+            0
+        };
     for child in node.children(&mut node.walk()) {
         walk_sigs(child, src, inner, sigs);
     }
@@ -67,7 +72,12 @@ fn walk_refs(node: Node, src: &[u8], refs: &mut Vec<String>) {
                 let t = child.kind();
                 if t == "dotted_name" || t == "aliased_import" {
                     let text = src_slice(child, src);
-                    let last = text.split('.').last().unwrap_or(&text).trim().to_string();
+                    let last = text
+                        .split('.')
+                        .next_back()
+                        .unwrap_or(&text)
+                        .trim()
+                        .to_string();
                     if !last.is_empty() {
                         refs.push(last);
                     }

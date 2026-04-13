@@ -90,8 +90,17 @@ fn walk_refs(node: Node, src: &[u8], refs: &mut Vec<String>) {
     match node.kind() {
         "import_declaration" => {
             let text = src_slice(node, src);
-            let cleaned = text.replace("import", "").trim().trim_end_matches(';').to_string();
-            let last = cleaned.split('.').last().unwrap_or("").trim().to_string();
+            let cleaned = text
+                .replace("import", "")
+                .trim()
+                .trim_end_matches(';')
+                .to_string();
+            let last = cleaned
+                .split('.')
+                .next_back()
+                .unwrap_or("")
+                .trim()
+                .to_string();
             if !last.is_empty() && last != "*" {
                 refs.push(last);
             }
@@ -99,7 +108,12 @@ fn walk_refs(node: Node, src: &[u8], refs: &mut Vec<String>) {
         "class_declaration" => {
             if let Some(superclass) = node.child_by_field_name("superclass") {
                 let name = src_slice(superclass, src);
-                let last = name.split('.').last().unwrap_or(&name).trim().to_string();
+                let last = name
+                    .split('.')
+                    .next_back()
+                    .unwrap_or(&name)
+                    .trim()
+                    .to_string();
                 if last.starts_with(|c: char| c.is_uppercase()) {
                     refs.push(last);
                 }

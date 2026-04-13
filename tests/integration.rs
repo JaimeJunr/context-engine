@@ -19,26 +19,41 @@ fn fixtures_dir() -> String {
 fn test_text_output_contains_repo_map() {
     let out = Command::new(ctx_bin())
         .args([
-            "--title", "Fix login timeout",
-            "--dirs", &fixtures_dir(),
-            "--max-tokens", "8192",
+            "map",
+            "--title",
+            "Fix login timeout",
+            "--dirs",
+            &fixtures_dir(),
+            "--max-tokens",
+            "8192",
         ])
         .output()
         .expect("failed to run ctx");
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(out.status.success(), "ctx exited with error: {}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "ctx exited with error: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert!(stdout.contains("<repo_map>"), "missing <repo_map> tag");
     assert!(stdout.contains("</repo_map>"), "missing </repo_map> tag");
-    assert!(stdout.contains("sample.rb") || stdout.contains("sample.py"), "no fixture files in output");
+    assert!(
+        stdout.contains("sample.rb") || stdout.contains("sample.py"),
+        "no fixture files in output"
+    );
 }
 
 #[test]
 fn test_ruby_signatures_extracted() {
     let out = Command::new(ctx_bin())
         .args([
-            "--title", "user session login",
-            "--dirs", &fixtures_dir(),
-            "--max-tokens", "8192",
+            "map",
+            "--title",
+            "user session login",
+            "--dirs",
+            &fixtures_dir(),
+            "--max-tokens",
+            "8192",
         ])
         .output()
         .expect("failed to run ctx");
@@ -51,61 +66,91 @@ fn test_ruby_signatures_extracted() {
 fn test_python_signatures_extracted() {
     let out = Command::new(ctx_bin())
         .args([
-            "--title", "login authenticate python",
-            "--dirs", &fixtures_dir(),
-            "--max-tokens", "8192",
+            "map",
+            "--title",
+            "login authenticate python",
+            "--dirs",
+            &fixtures_dir(),
+            "--max-tokens",
+            "8192",
         ])
         .output()
         .expect("failed to run ctx");
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(stdout.contains("class LoginService"), "missing Python class");
+    assert!(
+        stdout.contains("class LoginService"),
+        "missing Python class"
+    );
 }
 
 #[test]
 fn test_typescript_signatures_extracted() {
     let out = Command::new(ctx_bin())
         .args([
-            "--title", "typescript session controller auth",
-            "--dirs", &fixtures_dir(),
-            "--max-tokens", "8192",
+            "map",
+            "--title",
+            "typescript session controller auth",
+            "--dirs",
+            &fixtures_dir(),
+            "--max-tokens",
+            "8192",
         ])
         .output()
         .expect("failed to run ctx");
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(stdout.contains("interface AuthSession") || stdout.contains("class SessionController"), "missing TS types");
+    assert!(
+        stdout.contains("interface AuthSession") || stdout.contains("class SessionController"),
+        "missing TS types"
+    );
 }
 
 #[test]
 fn test_json_output_format() {
     let out = Command::new(ctx_bin())
         .args([
-            "--title", "login",
-            "--dirs", &fixtures_dir(),
-            "--max-tokens", "4096",
-            "--format", "json",
+            "map",
+            "--title",
+            "login",
+            "--dirs",
+            &fixtures_dir(),
+            "--max-tokens",
+            "4096",
+            "--format",
+            "json",
         ])
         .output()
         .expect("failed to run ctx");
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(out.status.success());
-    let parsed: serde_json::Value = serde_json::from_str(&stdout)
-        .expect("JSON output is not valid JSON");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&stdout).expect("JSON output is not valid JSON");
     assert!(parsed.is_array(), "JSON output should be an array");
     let arr = parsed.as_array().unwrap();
     assert!(!arr.is_empty(), "JSON array should not be empty");
     assert!(arr[0]["path"].is_string(), "each entry should have a path");
-    assert!(arr[0]["score"].is_number(), "each entry should have a score");
-    assert!(arr[0]["signatures"].is_array(), "each entry should have signatures");
+    assert!(
+        arr[0]["score"].is_number(),
+        "each entry should have a score"
+    );
+    assert!(
+        arr[0]["signatures"].is_array(),
+        "each entry should have signatures"
+    );
 }
 
 #[test]
 fn test_top_n_limits_results() {
     let out = Command::new(ctx_bin())
         .args([
-            "--title", "login session",
-            "--dirs", &fixtures_dir(),
-            "--top", "1",
-            "--format", "json",
+            "map",
+            "--title",
+            "login session",
+            "--dirs",
+            &fixtures_dir(),
+            "--top",
+            "1",
+            "--format",
+            "json",
         ])
         .output()
         .expect("failed to run ctx");
@@ -119,14 +164,21 @@ fn test_top_n_limits_results() {
 fn test_no_cache_flag() {
     let out = Command::new(ctx_bin())
         .args([
-            "--title", "login",
-            "--dirs", &fixtures_dir(),
-            "--max-tokens", "2048",
+            "map",
+            "--title",
+            "login",
+            "--dirs",
+            &fixtures_dir(),
+            "--max-tokens",
+            "2048",
             "--no-cache",
         ])
         .output()
         .expect("failed to run ctx");
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(stdout.contains("<repo_map>"), "should still produce output with --no-cache");
+    assert!(
+        stdout.contains("<repo_map>"),
+        "should still produce output with --no-cache"
+    );
 }
