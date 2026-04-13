@@ -2,20 +2,19 @@ use crate::tokenizer::tokenize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub fn bm25_rank(
+// BM25 genérico: K é o tipo da chave (PathBuf para map, i64 para search)
+pub fn bm25_rank_generic<K: Clone>(
     query: &str,
-    corpus: &[(PathBuf, Vec<String>)],
+    corpus: &[(K, Vec<String>)],
     top_n: usize,
-) -> Vec<(PathBuf, f64)> {
+    doc_text_fn: impl Fn(&K, &[String]) -> String,
+) -> Vec<(K, f64)> {
     let k1: f64 = 1.5;
     let b: f64 = 0.75;
 
     let docs: Vec<Vec<String>> = corpus
         .iter()
-        .map(|(path, sigs)| {
-            let doc_text = format!("{} {}", path.display(), sigs.join(" "));
-            tokenize(&doc_text)
-        })
+        .map(|(key, tokens)| tokenize(&doc_text_fn(key, tokens)))
         .collect();
 
     let query_terms: std::collections::HashSet<String> = tokenize(query).into_iter().collect();
@@ -39,10 +38,10 @@ pub fn bm25_rank(
         );
     }
 
-    let mut scores: Vec<(PathBuf, f64)> = corpus
+    let mut scores: Vec<(K, f64)> = corpus
         .iter()
         .zip(docs.iter())
-        .map(|((path, _), doc)| {
+        .map(|((key, _), doc)| {
             let dl = doc.len() as f64;
             let mut freq: HashMap<&str, usize> = HashMap::new();
             for t in doc {
@@ -60,7 +59,7 @@ pub fn bm25_rank(
                     Some(idf_val * tf_norm)
                 })
                 .sum();
-            (path.clone(), score)
+            (key.clone(), score)
         })
         .collect();
 
@@ -69,6 +68,17 @@ pub fn bm25_rank(
         scores.truncate(top_n);
     }
     scores
+}
+
+// Wrapper para compatibilidade com o pipeline map (PathBuf + sigs)
+pub fn bm25_rank(
+    query: &str,
+    corpus: &[(PathBuf, Vec<String>)],
+    top_n: usize,
+) -> Vec<(PathBuf, f64)> {
+    bm25_rank_generic(query, corpus, top_n, |path, sigs| {
+        format!("{} {}", path.display(), sigs.join(" "))
+    })
 }
 
 #[cfg(test)]
