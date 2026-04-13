@@ -16,22 +16,22 @@ Ao trabalhar em codebases grandes, LLMs e agentes chegam "cegos": precisam desco
 
 ```bash
 # "Preciso de contexto sobre autenticação"
-ctx /path/to/repo --title "Adicionar suporte a 2FA" --max-tokens 4000
+ctx map /path/to/repo --title "Adicionar suporte a 2FA" --max-tokens 4000
 
 # Saída: lista curada de arquivos + assinaturas, pronto para colar em prompt de LLM
 ```
 
-**`ctx-search` — Busca semântica em documentação** (RAG local):
+**`ctx search` — Busca semântica em documentação** (RAG local):
 - Cataloga documentação, especificações, guias
 - Busca por intenção (não apenas palavras-chave)
 - Totalmente local (roda offline, sem APIs externas)
 
 ```bash
 # Registrar documentação
-ctx-search add meus-docs --source ./docs --include "**/*.md"
+ctx add meus-docs --source ./docs --include "**/*.md"
 
 # Buscar
-ctx-search search meus-docs "Como configurar autenticação OAuth?"
+ctx search meus-docs "Como configurar autenticação OAuth?"
 ```
 
 ## Início Rápido
@@ -39,7 +39,7 @@ ctx-search search meus-docs "Como configurar autenticação OAuth?"
 ### Pré-requisitos
 
 - **Rust 1.70+** ([instalar](https://rustup.rs/))
-- Para `ctx-search`: **Ollama rodando** ([instalar](https://ollama.ai/))
+- Para `ctx search`: **Ollama rodando** ([instalar](https://ollama.ai/))
   ```bash
   ollama serve
   # Em outro terminal:
@@ -53,17 +53,16 @@ ctx-search search meus-docs "Como configurar autenticação OAuth?"
 # Build otimizado
 cargo build --release
 
-# Binários ficarão em: target/release/ctx e target/release/ctx-search
+# Binário ficará em: target/release/ctx
 # (Opcionalmente, copie para ~/.local/bin ou /usr/local/bin)
 cp target/release/ctx ~/.local/bin/
-cp target/release/ctx-search ~/.local/bin/
 ```
 
-### Exemplo 1: `ctx` — Repo Map
+### Exemplo 1: `ctx map` — Repo Map
 
 ```bash
 # Gerar mapa de contexto para um repositório
-ctx \
+ctx map \
   --title "CAP-123: Adicionar validação de CPF" \
   --dirs "src/models,src/validators" \
   --max-tokens 4000
@@ -77,22 +76,22 @@ ctx \
 - `--seeds dir1,dir2` — ativar Personalized PageRank (prioriza arquivos seed)
 - `--top N` — retornar top N arquivos (se omitido, usa token budget)
 
-### Exemplo 2: `ctx-search` — Documentação
+### Exemplo 2: `ctx search` — Documentação
 
 ```bash
 # Criar catálogo de documentação
-ctx-search add meu-projeto \
+ctx add meu-projeto \
   --source ./docs \
   --include "**/*.md"
 
 # Indexar e gerar embeddings (requer Ollama)
-ctx-search index meu-projeto --with-embed
+ctx index meu-projeto --with-embed
 
 # Buscar
-ctx-search search meu-projeto "como funciona o pipeline de dados?"
+ctx search meu-projeto "como funciona o pipeline de dados?"
 
 # Ver status
-ctx-search status meu-projeto
+ctx status meu-projeto
 ```
 
 **Subcomandos:**
@@ -129,7 +128,7 @@ Para desenvolvedores e contribuidores:
 cargo test                    # Rodar testes
 cargo clippy                  # Lint
 cargo build --release         # Build otimizado
-cargo run -- --help           # Ver ajuda
+cargo run -- --help           # Ver subcomandos disponíveis
 ```
 
 ## Performance

@@ -17,3 +17,6 @@ Thumbs.db
 
 # Cache local
 *.db
+
+# LLMs
+.claude

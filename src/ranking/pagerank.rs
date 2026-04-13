@@ -46,7 +46,10 @@ pub fn pagerank_pure(
             *xnew.get_mut(node).unwrap() += alpha * dangling * p_val + (1.0 - alpha) * p_val;
         }
 
-        let err: f64 = nodes.iter().map(|node| (xnew[node] - xlast[node]).abs()).sum();
+        let err: f64 = nodes
+            .iter()
+            .map(|node| (xnew[node] - xlast[node]).abs())
+            .sum();
         x = xnew;
         if err < n as f64 * tol {
             break;
@@ -63,14 +66,10 @@ pub fn build_graph(
     HashMap<PathBuf, Vec<PathBuf>>,
     HashMap<PathBuf, Vec<PathBuf>>,
 ) {
-    let mut graph: HashMap<PathBuf, Vec<PathBuf>> = corpus
-        .iter()
-        .map(|(p, _)| (p.clone(), vec![]))
-        .collect();
-    let mut predecessors: HashMap<PathBuf, Vec<PathBuf>> = corpus
-        .iter()
-        .map(|(p, _)| (p.clone(), vec![]))
-        .collect();
+    let mut graph: HashMap<PathBuf, Vec<PathBuf>> =
+        corpus.iter().map(|(p, _)| (p.clone(), vec![])).collect();
+    let mut predecessors: HashMap<PathBuf, Vec<PathBuf>> =
+        corpus.iter().map(|(p, _)| (p.clone(), vec![])).collect();
 
     for (src_path, _) in corpus {
         let refs = crate::extractors::extract_refs(src_path);
@@ -79,7 +78,10 @@ pub fn build_graph(
                 for tgt in targets {
                     if tgt != src_path {
                         graph.entry(src_path.clone()).or_default().push(tgt.clone());
-                        predecessors.entry(tgt.clone()).or_default().push(src_path.clone());
+                        predecessors
+                            .entry(tgt.clone())
+                            .or_default()
+                            .push(src_path.clone());
                     }
                 }
             }

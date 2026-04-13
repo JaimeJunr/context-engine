@@ -60,10 +60,7 @@ mod tests {
     #[test]
     fn minimal_budget_returns_at_least_one() {
         // budget=1 token é insuficiente para qualquer arquivo, mas best_n começa em 1
-        let ranked = vec![
-            (fixture("sample.rb"), 1.0),
-            (fixture("sample.py"), 0.8),
-        ];
+        let ranked = vec![(fixture("sample.rb"), 1.0), (fixture("sample.py"), 0.8)];
         let result = fit_to_budget(&ranked, &[], 1);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].0, fixture("sample.rb"));

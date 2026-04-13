@@ -7,8 +7,7 @@ use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
 
 static DB: Mutex<Option<Connection>> = Mutex::new(None);
-pub static NO_CACHE: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
+pub static NO_CACHE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 fn db_path() -> std::path::PathBuf {
     home_dir()

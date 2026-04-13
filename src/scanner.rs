@@ -9,9 +9,22 @@ static PLUGIN_RE: OnceLock<Regex> = OnceLock::new();
 fn skip_dirs() -> &'static HashSet<&'static str> {
     SKIP_DIRS.get_or_init(|| {
         [
-            "node_modules", ".git", "vendor", "build", "dist", ".gradle",
-            "target", "tmp", "log", "coverage", ".worktrees",
-            "test", "tests", "spec", "specs", "__tests__",
+            "node_modules",
+            ".git",
+            "vendor",
+            "build",
+            "dist",
+            ".gradle",
+            "target",
+            "tmp",
+            "log",
+            "coverage",
+            ".worktrees",
+            "test",
+            "tests",
+            "spec",
+            "specs",
+            "__tests__",
             "contrib",
         ]
         .iter()
@@ -107,10 +120,7 @@ pub fn scan_files(dirs: &[String]) -> Vec<PathBuf> {
                 .map(|e| format!(".{}", e))
                 .unwrap_or_default();
             // Also handle extensionless files like Rakefile, Gemfile
-            let name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             let is_ruby_named = matches!(name, "Rakefile" | "Gemfile" | "Capfile");
 
             if !SUPPORTED_EXTS.contains(&ext.as_str()) && !is_ruby_named {

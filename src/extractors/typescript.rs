@@ -14,7 +14,11 @@ fn src_slice(node: Node, src: &[u8]) -> String {
 
 pub fn extract(src: &[u8], is_tsx: bool) -> Vec<String> {
     let mut parser = Parser::new();
-    let lang = if is_tsx { tsx_language() } else { ts_language() };
+    let lang = if is_tsx {
+        tsx_language()
+    } else {
+        ts_language()
+    };
     parser.set_language(&lang).unwrap();
     let Some(tree) = parser.parse(src, None) else {
         return vec![];
@@ -56,7 +60,12 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
                     .child_by_field_name("parameters")
                     .map(|p| src_slice(p, src))
                     .unwrap_or_default();
-                sigs.push(format!("{}  function {}{}", pad, src_slice(name, src), params));
+                sigs.push(format!(
+                    "{}  function {}{}",
+                    pad,
+                    src_slice(name, src),
+                    params
+                ));
             }
         }
         "export_statement" => {
@@ -76,7 +85,11 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
 
 pub fn extract_refs(src: &[u8], is_tsx: bool) -> Vec<String> {
     let mut parser = Parser::new();
-    let lang = if is_tsx { tsx_language() } else { ts_language() };
+    let lang = if is_tsx {
+        tsx_language()
+    } else {
+        ts_language()
+    };
     parser.set_language(&lang).unwrap();
     let Some(tree) = parser.parse(src, None) else {
         return vec![];

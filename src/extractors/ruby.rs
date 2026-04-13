@@ -9,9 +9,17 @@ fn src_slice(node: Node, src: &[u8]) -> String {
 }
 
 const RAILS_MACROS: &[&str] = &[
-    "attr_accessor", "attr_reader", "attr_writer",
-    "belongs_to", "has_many", "has_one", "has_and_belongs_to_many",
-    "scope", "validates", "before_action", "after_action",
+    "attr_accessor",
+    "attr_reader",
+    "attr_writer",
+    "belongs_to",
+    "has_many",
+    "has_one",
+    "has_and_belongs_to_many",
+    "scope",
+    "validates",
+    "before_action",
+    "after_action",
 ];
 
 pub fn extract(src: &[u8]) -> Vec<String> {
@@ -52,7 +60,12 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
                     .child_by_field_name("parameters")
                     .map(|p| src_slice(p, src))
                     .unwrap_or_default();
-                sigs.push(format!("{}  def self.{}{}", pad, src_slice(name, src), params));
+                sigs.push(format!(
+                    "{}  def self.{}{}",
+                    pad,
+                    src_slice(name, src),
+                    params
+                ));
             }
         }
         "call" => {
