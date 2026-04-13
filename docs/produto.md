@@ -14,18 +14,31 @@ A abordagem ingênua de mandar o repositório inteiro para o LLM não escala. Um
 
 ---
 
-## O que é o ctx
+## O que é o context-engine
 
-`ctx` é uma CLI (e futuramente MCP server) que substitui comandos ingênuos como `ls`, `tree` e `grep` por **contexto inteligente e comprimido** para agentes de IA.
+`context-engine` é um framework Rust com **dois binários** que resolvem diferentes facetas do problema de contexto:
 
-Em vez de despejar dados brutos, o `ctx`:
+### `ctx` — Contexto de Código
 
-1. **Descobre** arquivos relevantes para uma query ou ticket
-2. **Extrai** apenas as assinaturas (funções, classes, referências) — não o corpo completo
-3. **Ranqueia** por relevância via BM25 + Personalized PageRank
-4. **Entrega** dentro de um orçamento de tokens configurável
+Substitui `ls`, `tree`, `grep` por contexto inteligente para agentes.
 
-O agente recebe o que precisa, não o que existe.
+1. **Descobre** arquivos relevantes (Scanner respeitando .gitignore)
+2. **Extrai** assinaturas via Tree-sitter (funções, classes, tipos)
+3. **Ranqueia** por relevância (BM25 + Personalized PageRank)
+4. **Comprime** dentro de orçamento de tokens (cache SQLite, reutilização)
+
+Redução típica: ~50 tokens (função inteira) → ~8 tokens (assinatura) + contexto mantido.
+
+### `ctx-search` — Contexto de Documentação (RAG local)
+
+Busca semântica **totalmente local** em acervos documentais.
+
+1. **Indexa** documentação/specs (markdown, PDFs)
+2. **Busca** por intenção (BM25 + embeddings semânticos via Ollama)
+3. **Re-ranking** qualitativo via LLM (valida top-30)
+4. **Offline:** sem APIs externas, sem vazamento de dados
+
+Resultado: usuários/agentes encontram informações relevantes sem ler documentação inteira.
 
 ---
 
@@ -51,49 +64,132 @@ Reescrita em Rust com pipeline bem definido: Scanner → Extractor (Tree-sitter)
 
 ---
 
-## Onde Estamos Hoje
+## Onde Estamos Hoje — Uso em Produção
 
-O `ctx` resolve bem o caso central: **gerar contexto de código para um agente de planejamento**, dado um ticket ou query.
+### `ctx` — claude-auto-coder
 
-Usado em produção pelo `claude-auto-coder` (`/home/jaime/me/claudejob/claude-auto-coder`) no pipeline:
+Automatização de tickets Jira que usa `ctx` para contexto de código:
 
 ```
-Jira ticket → Triage → Plan (usa ctx para repo_map) → Implementation → Push
+Jira ticket → Triage → Plan (ctx --title "ticket" --dirs "src" → repo_map)
+  ↓
+Opus recebe: ticket + repo_map (curado) → plano detalhado
+  ↓
+Implement → Push
 ```
 
-O `ctx` é invocado em `plan.sh` para gerar o `repo_map` que o Opus usa ao planejar a implementação. Sem ele, o Opus começa às cegas.
+Invocado em `plan.sh` para gerar repo_map. Sem ele, Opus começa às cegas explorando `ls`, `find`, `grep`.
+
+**Resultado:** Planos mais precisos, menos exploração, economia de tokens.
+
+### `ctx-search` — Fase Beta
+
+Usado internamente para busca em documentação. Pipeline ainda em refinamento:
+
+1. Indexar docs: `ctx-search add docs --source ./docs --include "**/*.md"`
+2. Reindexar com embeddings: `ctx-search index docs --with-embed`
+3. Usar em prompts: "Segundo a documentação, como funciona X?" + `ctx-search search docs "X"`
+
+**Feedback:** Busca semântica funciona bem para contexto português. Próxima: integrar com prompts de LLM automaticamente.
 
 ---
 
 ## Visão de Futuro — Framework dos 3 Horizontes
 
-### H1 — Core: Limpar a Casa
+### H1 — Core: Engenharia Sólida ✅ Em Progresso
 
-O `ctx` funciona, mas foi construído como solução tática. Para sustentar o que vem a seguir, precisa ser refatorado para ser uma base sólida: módulos mais independentes, interfaces limpas, engenharia de verdade.
+Base está implementada (`ctx` e `ctx-search`), mas arquitetura precisa de refinamento:
 
-**Objetivo:** transformar um "trabalho escolar que funciona" em um produto que possa crescer.
+- ✅ **Dois pipelines:** código + documentação
+- ✅ **Modular:** Scanner, Extractor, Ranker, Chunker, Embedder independentes
+- ✅ **SQLite:** cache persistente, reutilização entre invocações
+- 🔄 **Próximos:** melhorar observabilidade, testes de edge-cases, otimizar performance
 
-### H2 — Emergente: Substituir o Context Mode
+**Objetivo:** base sólida e confiável para tudo que vem a seguir.
 
-[Context Mode](https://github.com/...) resolve o outro lado do problema de contexto: continuidade de sessão e sandbox de execução. Hoje é um MCP server externo — guarda estado em SQLite, usa BM25 para recuperar contexto relevante após compactação.
+### H2 — Emergente: RAG Multimodal Local ✅ Implementado
 
-Já temos as peças: SQLite, BM25, local-first. A ideia é trazer essa lógica para dentro do `ctx`, de forma mais poderosa e integrada.
+`ctx-search` (módulo `catalog/`) é a prova de conceito:
 
-**Objetivo:** `ctx` como engine de contexto completo — código *e* sessão.
+- ✅ **Busca local:** BM25 + embeddings semânticos (Ollama)
+- ✅ **RRF fusion:** combina termo-a-termo + semântica
+- ✅ **Re-ranking:** LLM valida top-30 (qualidade)
+- ✅ **Offline:** sem APIs, sem vazar dados
 
-### H3 — Experimental: Substituir o RTK e incorporar QMD
+Próximos passos: estender a múltiplos tipos de documentos (PDFs, arquivos binários via OCR), suportar múltiplas línguas, benchmarks públicos.
 
-**RTK** filtra e comprime outputs de comandos antes de chegarem ao LLM (ex: `git status` de 2.000 tokens → 200 tokens). A abordagem é certa, mas o `ctx` pode ir além: não só filtrar, mas filtrar *com inteligência* — usando o que já sabe sobre o repositório para comprimir melhor.
+**Objetivo:** RAG local como commodity — reutilizável em qualquer projeto.
 
-**QMD** combina BM25 + busca semântica vetorial + LLM re-ranking, tudo local via GGUF. Já temos a base de BM25 e SQLite. A busca semântica vetorial é o próximo passo natural para cobrir casos onde BM25 falha (ex: queries em português puro sem termos técnicos).
+### H3 — Experimental: MCP Server + Compressão Inteligente
 
-**Objetivo:** `ctx` como engine unificado que cobre os três lados do problema de contexto: código, sessão e outputs de comandos.
+**MCP Server:** converter `ctx` e `ctx-search` em MCP servers para integração com Claude, outras IDEs.
+
+- Interface de longa duração (não CLI one-shot)
+- Persistência de contexto entre turns
+- Streaming de resultados
+
+**Compressão de Outputs:** estender `ctx-search` para comprimir outputs de comandos:
+
+- `git log` retorna 5.000 linhas? Resumir semanticamente.
+- `ls -R` retorna árvore gigante? Priorizar diretórios relevantes.
+- `test output` falha em 100 testes? Agrupar por tipo de erro, retornar top-20.
+
+Usar a inteligência já desenvolvida (BM25, RRF, LLM re-ranking) para comprimir outputs com **inteligência**, não só com filtros ingênuos.
+
+**Objetivo:** `context-engine` como **plataforma unificada** para reduzir contexto irrelevante em code, docs, session history e command outputs.
+
+---
+
+## Status Atual — Mapa de Features
+
+| Feature | Status | Notas |
+|---------|--------|-------|
+| **ctx** — Repo map curado | ✅ Prod | Scanner + Extractor + BM25 + PageRank |
+| TypeScript/TSX extractor | ✅ Prod | Tree-sitter, completo |
+| Python extractor | ✅ Prod | Tree-sitter, completo |
+| Ruby extractor | ✅ Prod | Tree-sitter, completo |
+| Groovy extractor | ✅ Prod | Gramática custom, compilada via build.rs |
+| BM25 ranking | ✅ Prod | TF-IDF sobre assinaturas |
+| Personalized PageRank | ✅ Prod | Com seeds, grafo de dependências |
+| Token budget fitting | ✅ Prod | --max-tokens respeitado |
+| SQLite cache (signatures) | ✅ Prod | SHA256 invalidation, >80% hit rate |
+| **ctx-search** — RAG local | ✅ Prod | Chunker + Indexer + Embedder + Searcher |
+| Markdown chunking | ✅ Prod | Heading-aware, 15% overlap |
+| BM25 search | ✅ Prod | Term-based |
+| Semantic search | ✅ Prod | Ollama embeddings (nomic-embed-text) |
+| RRF fusion | ✅ Prod | Combina BM25 + vetorial |
+| LLM re-ranking | ✅ Prod | llama3.2, top-30 validation |
+| SQLite collections | ✅ Prod | Multiple named acervos |
+| JSON output (ctx) | ✅ Prod | {path, score, signatures} |
+| MCP server | 🔄 Roadmap | H3, estado persistente entre turns |
+| Output compression | 🔄 Roadmap | H3, inteligente (não só filtros) |
+| Múltiplas linguagens | 🔄 Roadmap | Java, C#, Go (extenders Tree-sitter) |
+| PDF suporte | 🔄 Roadmap | OCR + chunking |
 
 ---
 
 ## Pontos Críticos Hoje
 
-- A interface é limitada: uma CLI que roda uma vez e sai. Não há estado entre invocações (além do cache de assinaturas).
-- Suporte a linguagens é manual: cada linguagem nova exige um extractor Tree-sitter.
-- Sem observabilidade: difícil saber quando o ranking acertou ou errou.
-- Sem modo servidor: para ser um MCP server, precisa de uma interface de longa duração.
+### Resolvidos ✅
+
+- **RAG local:** implementado em `ctx-search` (BM25 + embeddings + re-ranking)
+- **SQLite persistência:** cache de assinaturas + chunks + embeddings
+- **Modularidade:** pipelines independentes, fácil estender
+
+### A Resolver 🔄
+
+1. **Observabilidade:** sem métricas de ranking quality (acertou top-5?)
+   - Solução: adicionar modo debug com scores, benchmarks
+   
+2. **Suporte a linguagens:** manual (cada nova requer extractor Tree-sitter)
+   - Mitigação: focar nas top 5 linguagens (TypeScript, Python, Ruby, Groovy, Java)
+   - Futuro: suporte genérico via Tree-sitter base
+   
+3. **Performance:** embeddings Ollama podem ser lentos (primeira indexação)
+   - Mitigação: lazy loading, cache de embeddings, batching
+   
+4. **Interface:** CLI one-shot, sem estado entre turns
+   - Solução H3: MCP server com contexto persistente
+
+5. **Teste em produção:** `claude-auto-coder` é usuário único
+   - Próximo: feedback de usuários reais, cases públicos
