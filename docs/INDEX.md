@@ -27,6 +27,12 @@
 - **[Implementação RAG](implementacao-rag.md)** — Arquivos criados, testes, CLI
 - **[Arquitetura: pipeline ctx-search](arquitetura.md#2️⃣-pipeline-ctx-search-recuperação-semântica)** — Chunker → Indexer → Embedder → Searcher → Reranker
 
+#### `ctx exec` — Command Output Compression
+- **[Overview](exec/overview.md)** — O que é, como funciona, domínios suportados
+- **[Filtering Pipeline](exec/filtering-pipeline.md)** — Os 8 estágios de transformação de saída
+- **[Configuration](exec/configuration.md)** — Customizar filtros e comportamento
+- **[Metrics](exec/metrics.md)** — Rastrear economia de tokens
+
 ### 🔬 Pesquisa & Decisões
 
 - **[State of the Art: Code Search](pesquisa/code-search-state-of-art.md)** — Survey de BM25, embeddings, PageRank
@@ -40,6 +46,7 @@
 |---------|-------------|--------|
 | **Usar `ctx` ou `ctx-search`** | [`README.md`](../README.md) | [`Arquitetura`](arquitetura.md) para detalhes |
 | **Entender o projeto** | [`Produto`](produto.md) | [`Patterns`](patterns.md) (filosofia) |
+| **Usar `ctx exec`** | [`exec/Overview`](exec/overview.md) | [`exec/Configuration`](exec/configuration.md) para customizar |
 | **Implementar nova feature** | [`Patterns`](patterns.md) → [`Arquitetura`](arquitetura.md) | Código + testes |
 | **Adicionar linguagem** | [`Patterns` § "Como Adicionar Suporte"](patterns.md#como-adicionar-suporte-a-nova-linguagem) | `src/extractors/<lang>.rs` |
 | **Estender ctx-search** | [`Patterns` § "Como Estender ctx-search"](patterns.md#como-estender-ctx-search-novos-subcomandos) | `catalog/mod.rs` |

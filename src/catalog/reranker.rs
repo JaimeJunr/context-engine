@@ -180,13 +180,13 @@ fn judge_relevance(
         return Ok(cached);
     }
 
+    let content_preview: String = content.chars().take(500).collect();
     let prompt = format!(
         "Você é um avaliador de relevância. Responda SOMENTE com 'SIM' ou 'NÃO'.\n\
          Pergunta: {}\n\
          Fragmento: {}\n\
          Este fragmento responde ou é relevante para a pergunta?",
-        query,
-        &content[..content.len().min(500)]
+        query, content_preview
     );
 
     let response = llm_generate(model, &prompt, base_url)?;

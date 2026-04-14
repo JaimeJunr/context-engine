@@ -117,6 +117,47 @@ enum Commands {
         /// Nome do acervo
         name: String,
     },
+
+    /// Configura interativamente endpoint e modelos LLM
+    Init,
+
+    /// Gerencia configuração global (~/.ctx/config.toml)
+    Config {
+        #[command(subcommand)]
+        cmd: ConfigCmd,
+    },
+
+    /// Proxy de comandos com economia de tokens
+    Exec {
+        #[command(subcommand)]
+        cmd: ExecCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum ExecCommand {
+    /// Relatório de economia de tokens
+    Report {
+        /// Formato JSON
+        #[arg(long)]
+        json: bool,
+        /// Filtrar por projeto (diretório)
+        #[arg(long)]
+        project: Option<String>,
+        /// Janela de dias (padrão: todos)
+        #[arg(long)]
+        days: Option<u32>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ConfigCmd {
+    /// Define um valor de configuração (ex: llm.endpoint)
+    Set { key: String, value: String },
+    /// Lê um valor de configuração
+    Get { key: String },
+    /// Lista toda a configuração atual
+    List,
 }
 
 fn main() {
@@ -283,6 +324,84 @@ fn execute(cli: Cli) -> Result<()> {
             catalog::compact(&name)?;
             println!("Compactação de '{}' concluída.", name);
         }
+
+        Commands::Init => {
+            context_engine::config::run_init_wizard()?;
+        }
+
+        Commands::Config { cmd } => {
+            let mut cfg = context_engine::config::load()?;
+            match cmd {
+                ConfigCmd::Set { key, value } => {
+                    context_engine::config::set_key(&mut cfg, &key, &value)?;
+                    context_engine::config::save(&cfg)?;
+                    println!("{} = {}", key, value);
+                }
+                ConfigCmd::Get { key } => match context_engine::config::get_key(&cfg, &key)? {
+                    Some(v) => println!("{}", v),
+                    None => println!("(não definido)"),
+                },
+                ConfigCmd::List => {
+                    let path = context_engine::config::config_path();
+                    println!("Config: {}\n", path.display());
+                    println!(
+                        "llm.endpoint = {}",
+                        cfg.llm.endpoint.as_deref().unwrap_or("(não definido)")
+                    );
+                    println!(
+                        "llm.embedder = {}",
+                        cfg.llm.embedder.as_deref().unwrap_or("(não definido)")
+                    );
+                    println!(
+                        "llm.reranker = {}",
+                        cfg.llm.reranker.as_deref().unwrap_or("(não definido)")
+                    );
+                }
+            }
+        }
+
+        Commands::Exec { cmd } => match cmd {
+            ExecCommand::Report {
+                json,
+                project,
+                days,
+            } => {
+                use context_engine::exec::metrics;
+                use dirs::home_dir;
+                use rusqlite::Connection;
+
+                let db_path = home_dir()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."))
+                    .join(".cache")
+                    .join("context_engine")
+                    .join("catalog.db");
+                std::fs::create_dir_all(db_path.parent().unwrap())?;
+                let conn = Connection::open(&db_path)?;
+                metrics::migrate(&conn)?;
+
+                let summary = metrics::aggregate_summary(&conn, project.as_deref(), days)?;
+
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&summary)?);
+                } else {
+                    println!("=== Relatório de Economia de Tokens ===");
+                    println!("Comandos executados: {}", summary.total_commands);
+                    println!("Tokens entrada:      {}", summary.total_input_tokens);
+                    println!("Tokens saída:        {}", summary.total_output_tokens);
+                    println!("Tokens economizados: {}", summary.total_saved_tokens);
+                    println!("Economia média:      {:.1}%", summary.avg_savings_percent);
+                    if !summary.breakdown_by_command.is_empty() {
+                        println!("\nPor comando:");
+                        for b in &summary.breakdown_by_command {
+                            println!(
+                                "  {:30} {:5}x  -{} tokens ({:.0}%)",
+                                b.command_name, b.count, b.saved_tokens, b.avg_savings_percent
+                            );
+                        }
+                    }
+                }
+            }
+        },
     }
 
     Ok(())

@@ -32,18 +32,19 @@ pub fn search(col: &Collection, raw_query: &str, top_k: usize) -> Result<Vec<Sea
         }
         // RD-09-A: busca somente vetorial
         SearchMode::Conceptual => {
-            let results = vector_search(&col.name, &query, embed_model, base_url, top_k * 2)?;
+            let results = vector_search(&col.name, &query, &embed_model, base_url, top_k * 2)?;
             Ok(finalize(results, top_k))
         }
         // RD-09-A: expanded — gera hipótese de resposta antes da busca
         SearchMode::Expanded => {
-            let hypothesis = reranker::generate_hypothesis(rerank_model, &query, base_url)?;
+            let hypothesis = reranker::generate_hypothesis(&rerank_model, &query, base_url)?;
             let expanded = format!("{} {}", query, hypothesis);
-            let results = full_search(col, &expanded, embed_model, rerank_model, base_url, top_k)?;
+            let results =
+                full_search(col, &expanded, &embed_model, &rerank_model, base_url, top_k)?;
             Ok(results)
         }
         // Fluxo padrão: BM25 + vetorial + RRF + reranking
-        SearchMode::Auto => full_search(col, &query, embed_model, rerank_model, base_url, top_k),
+        SearchMode::Auto => full_search(col, &query, &embed_model, &rerank_model, base_url, top_k),
     }
 }
 
@@ -59,21 +60,22 @@ fn full_search(
     let variants = get_query_variants(rerank_model, query, base_url)?;
 
     // Executa BM25 para query original e variantes
+    // RD-10: query original tem peso 2x via duplicação em RRF fusion
     let mut all_bm25: Vec<Vec<(i64, f64)>> = Vec::new();
-    // Query original tem peso 2x (RD-10): inserimos duas vezes
     let original_bm25 = bm25_search_ids(&col.name, query)?;
     all_bm25.push(original_bm25.clone());
-    all_bm25.push(original_bm25); // peso 2x
+    all_bm25.push(original_bm25);
 
     for v in &variants {
         all_bm25.push(bm25_search_ids(&col.name, v)?);
     }
 
     // Executa busca vetorial para query original e variantes
+    // RD-10: query original tem peso 2x
     let mut all_vector: Vec<Vec<(i64, f64)>> = Vec::new();
     let original_vec = vector_search_ids(&col.name, query, embed_model, base_url)?;
     all_vector.push(original_vec.clone());
-    all_vector.push(original_vec); // peso 2x
+    all_vector.push(original_vec);
 
     for v in &variants {
         all_vector.push(vector_search_ids(&col.name, v, embed_model, base_url)?);
@@ -199,24 +201,24 @@ fn position_bonus(rank: usize) -> f64 {
 
 // --- Normalização (RD-15) ---
 
-pub fn normalize_scores(mut items: Vec<(i64, f64)>) -> Vec<(i64, f64)> {
+pub fn normalize_scores(items: Vec<(i64, f64)>) -> Vec<(i64, f64)> {
     if items.is_empty() {
         return items;
     }
-    let max = items
+
+    // Single pass: calcula max e min simultaneamente (O(N) em vez de 2N)
+    let (max, min) = items
         .iter()
-        .map(|(_, s)| *s)
-        .fold(f64::NEG_INFINITY, f64::max);
-    let min = items.iter().map(|(_, s)| *s).fold(f64::INFINITY, f64::min);
+        .fold((f64::NEG_INFINITY, f64::INFINITY), |(mx, mn), (_, s)| {
+            (mx.max(*s), mn.min(*s))
+        });
 
     if (max - min).abs() < 1e-12 {
-        // Todos iguais: atribui 1.0 para todos
-        for (_, s) in &mut items {
-            *s = 1.0;
-        }
-        return items;
+        // Todos os scores iguais: normaliza para 1.0
+        return items.into_iter().map(|(id, _)| (id, 1.0)).collect();
     }
 
+    // Normaliza no intervalo [0, 1]
     items
         .into_iter()
         .map(|(id, s)| (id, (s - min) / (max - min)))
@@ -274,13 +276,15 @@ fn build_results(
     let mut seen_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut results = Vec::new();
 
+    // Carrega chunks UMA VEZ antes do loop (evita N+1)
+    let chunks = store::get_all_chunks_with_embeddings(collection)?;
+
     for (chunk_id, score) in items {
         if results.len() >= top_k {
             break;
         }
 
-        // Busca chunk e doc
-        let chunks = store::get_all_chunks_with_embeddings(collection)?;
+        // Busca chunk no HashMap (O(1)) em vez de store I/O
         let chunk = match chunks.iter().find(|c| c.id == *chunk_id) {
             Some(c) => c.clone(),
             None => continue,

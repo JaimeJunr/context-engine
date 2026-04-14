@@ -47,7 +47,7 @@ pub fn embed_pending(name: &str, batch_size: usize) -> Result<usize> {
     let col = store::get_collection(name)?
         .ok_or_else(|| anyhow::anyhow!("acervo '{}' não encontrado", name))?;
 
-    let model = col.embedder_model_or_default().to_string();
+    let model = col.embedder_model_or_default();
     let endpoint = col.llm_endpoint_resolved();
     let pending = store::get_pending_chunks(name, batch_size)?;
     let count = pending.len();
@@ -57,12 +57,23 @@ pub fn embed_pending(name: &str, batch_size: usize) -> Result<usize> {
     }
 
     // RD-07: entrada = chunk + título do documento como âncora
-    for chunk in &pending {
-        let doc_path = store::get_doc_path(chunk.doc_id)?.unwrap_or_default();
-        let title = embedder::doc_title_from_path(&doc_path);
-        let input = embedder::format_embed_input(&title, &chunk.content);
-        let embedding = embedder::embed_text(&model, &input, endpoint.as_deref())?;
-        store::update_chunk_embedding(chunk.id, &embedding)?;
+    // Paraleliza computação de embeddings (antes da atualização serial)
+    use rayon::prelude::*;
+
+    let embeddings: Result<Vec<(i64, Vec<f32>)>> = pending
+        .par_iter()
+        .map(|chunk| {
+            let doc_path = store::get_doc_path(chunk.doc_id)?.unwrap_or_default();
+            let title = embedder::doc_title_from_path(&doc_path);
+            let input = embedder::format_embed_input(&title, &chunk.content);
+            let embedding = embedder::embed_text(&model, &input, endpoint.as_deref())?;
+            Ok((chunk.id, embedding))
+        })
+        .collect();
+
+    // Atualiza sequencialmente após computação paralela (store I/O é serial)
+    for (chunk_id, embedding) in embeddings? {
+        store::update_chunk_embedding(chunk_id, &embedding)?;
     }
 
     Ok(count)

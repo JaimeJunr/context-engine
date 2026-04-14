@@ -16,20 +16,70 @@ pub struct Collection {
 }
 
 impl Collection {
-    pub fn embedder_model_or_default(&self) -> &str {
-        self.embedder_model.as_deref().unwrap_or("nomic-embed-text")
+    // Prioridade: CTX_EMBEDDER_MODEL > per-collection > config global > built-in default
+    pub fn embedder_model_or_default(&self) -> String {
+        // 1. env var
+        if let Ok(v) = std::env::var("CTX_EMBEDDER_MODEL") {
+            if !v.is_empty() {
+                return v;
+            }
+        }
+        // 2. per-collection
+        if let Some(ref m) = self.embedder_model {
+            return m.clone();
+        }
+        // 3. config global
+        if let Ok(cfg) = crate::config::load() {
+            if let Some(m) = cfg.llm.embedder {
+                return m;
+            }
+        }
+        // 4. built-in default
+        "nomic-embed-text".to_string()
     }
 
-    pub fn reranker_model_or_default(&self) -> &str {
-        self.reranker_model.as_deref().unwrap_or("llama3.2")
+    // Prioridade: CTX_RERANKER_MODEL > per-collection > config global > built-in default
+    pub fn reranker_model_or_default(&self) -> String {
+        // 1. env var
+        if let Ok(v) = std::env::var("CTX_RERANKER_MODEL") {
+            if !v.is_empty() {
+                return v;
+            }
+        }
+        // 2. per-collection
+        if let Some(ref m) = self.reranker_model {
+            return m.clone();
+        }
+        // 3. config global
+        if let Ok(cfg) = crate::config::load() {
+            if let Some(m) = cfg.llm.reranker {
+                return m;
+            }
+        }
+        // 4. built-in default
+        "llama3.2".to_string()
     }
 
-    // Prioridade: CTX_LLM_ENDPOINT env var > per-collection > None (usa default do módulo)
+    // Prioridade: CTX_LLM_ENDPOINT > per-collection > config global > None
     pub fn llm_endpoint_resolved(&self) -> Option<String> {
-        std::env::var("CTX_LLM_ENDPOINT")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| self.llm_endpoint.clone())
+        // 1. env var
+        if let Ok(v) = std::env::var("CTX_LLM_ENDPOINT") {
+            if !v.is_empty() {
+                return Some(v);
+            }
+        }
+        // 2. per-collection
+        if let Some(ref e) = self.llm_endpoint {
+            return Some(e.clone());
+        }
+        // 3. config global
+        if let Ok(cfg) = crate::config::load() {
+            if let Some(e) = cfg.llm.endpoint {
+                return Some(e);
+            }
+        }
+        // 4. None
+        None
     }
 }
 
@@ -147,5 +197,74 @@ mod tests {
         let (mode, q) = SearchMode::parse_from_query("como funciona o chunking");
         assert_eq!(mode, SearchMode::Auto);
         assert_eq!(q, "como funciona o chunking");
+    }
+
+    struct EnvVarGuard(&'static str);
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            std::env::remove_var(self.0);
+        }
+    }
+
+    #[test]
+    fn test_embedder_default_when_no_config() {
+        // Sem env var, sem per-collection → usa built-in default
+        let _guard = EnvVarGuard("CTX_EMBEDDER_MODEL");
+        std::env::remove_var("CTX_EMBEDDER_MODEL");
+        let col = Collection {
+            name: "test".to_string(),
+            sources: vec![],
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            path_contexts: vec![],
+            pre_index_cmd: None,
+            embedder_model: None,
+            reranker_model: None,
+            llm_endpoint: None,
+        };
+        // Sem per-collection e sem env, pode pegar do config global
+        // (esse teste depende de estado externo, então apenas verifica que retorna algo)
+        let model = col.embedder_model_or_default();
+        assert!(!model.is_empty(), "model não deve estar vazio");
+    }
+
+    #[test]
+    fn test_per_collection_overrides_default() {
+        let _guard = EnvVarGuard("CTX_EMBEDDER_MODEL");
+        std::env::remove_var("CTX_EMBEDDER_MODEL");
+        let col = Collection {
+            name: "test".to_string(),
+            sources: vec![],
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            path_contexts: vec![],
+            pre_index_cmd: None,
+            embedder_model: Some("per-collection-model".to_string()),
+            reranker_model: None,
+            llm_endpoint: None,
+        };
+        let model = col.embedder_model_or_default();
+        // per-collection sempre sobrescreve tudo (exceto env var)
+        assert_eq!(model, "per-collection-model");
+    }
+
+    #[test]
+    fn test_env_var_overrides_all() {
+        let _guard = EnvVarGuard("CTX_EMBEDDER_MODEL");
+        std::env::set_var("CTX_EMBEDDER_MODEL", "env-model");
+        let col = Collection {
+            name: "test".to_string(),
+            sources: vec![],
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            path_contexts: vec![],
+            pre_index_cmd: None,
+            embedder_model: Some("per-collection-model".to_string()),
+            reranker_model: None,
+            llm_endpoint: None,
+        };
+        let model = col.embedder_model_or_default();
+        // env var sobrescreve tudo
+        assert_eq!(model, "env-model");
     }
 }
