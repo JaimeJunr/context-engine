@@ -1,210 +1,187 @@
 # ctx — CLI para repo map e recuperação semântica
 
-`ctx` tem dois modos: **mapa estrutural** (entender código) e **busca semântica** (encontrar conhecimento em documentos indexados).
+`ctx` oferece dois modos principais:
 
-## Subcomandos
+1. **`ctx map`** — Entender estrutura de código (pipeline: scan → extract → rank → budget)
+2. **`ctx search`** — Busca semântica em documentação indexada (embeddings + SQLite)
+3. **Gerenciamento de acervos** — `add`, `index`, `embed`, `list`, `status`, `compact`
 
-```
-ctx map      Gera repo map curado para LLMs
-ctx add      Registra ou atualiza um acervo documental
-ctx index    Cataloga documentos do acervo (novos e modificados)
-ctx embed    Gera embeddings para chunks pendentes
-ctx search   Busca semântica no acervo
-ctx list     Lista todos os acervos registrados
-ctx status   Exibe relatório de saúde do acervo
-ctx compact  Compacta o repositório interno, removendo dados obsoletos
-```
+## Reescritas Automáticas (ctx-rewrite.sh)
+
+O hook `ctx-rewrite.sh` reescreve automaticamente comandos para usar `ctx`:
+
+| Padrão | Reescrita |
+|--------|-----------|
+| `find . -name "*.rs"` ou `find . -type f` | `ctx map --title "..." --dirs .` |
+| `grep -r "pattern"` ou `rg "pattern"` | `ctx search acervo "pattern"` |
+| Qualquer `ls -la`, `tree`, estrutura repo | `ctx map --top N --dirs .` |
+| Histórico git `git log`, diffs | `ctx map --seeds . --dirs .` |
 
 ---
 
-## ctx map — Mapa estrutural de repositório
+## 🎯 ESTRATÉGIA: Quando usar cada comando
 
-Use antes de implementar ou refatorar para entender a estrutura do codebase.
+### 1. `ctx map` — Entender código rapidamente
+
+**Use quando:**
+- Precisa entender a estrutura de um diretório
+- Vai refatorar e precisa saber dependências
+- Quer ver quais arquivos são importantes
+
+**Detecta:**
+- Palavras-chave no prompt: "entender", "explorar", "mapa de", "estrutura", "arquitetura", "overview"
+- Comandos shell: `find`, `ls -la`, `tree`, `lsof`
 
 ```bash
 # Básico (budget padrão: 4096 tokens)
-ctx map --title "entender autenticação" --dirs /path/to/repo
+ctx map --title "entender autenticação" --dirs src/auth
 
-# Budget maior para repos grandes
+# Budget maior para repos grandes (8000 tokens)
 ctx map --title "refatorar ranking" --dirs ./src --max-tokens 8000
 
 # Múltiplos diretórios
-ctx map --title "ticket XPTO" --dirs src,tests,docs
+ctx map --title "catalog + search" --dirs src/catalog,src/ranking
 
-# Saída JSON
-ctx map --title "análise" --dirs . --format json
-
-# Número fixo de arquivos (ignora budget)
-ctx map --title "top 20 arquivos" --dirs . --top 20
+# Focar em arquivos-chave (top N em relevância)
+ctx map --title "entry points" --dirs . --top 15
 
 # Personalized PageRank: prioriza arquivos próximos aos seeds
 ctx map --title "mudança no ranker" --dirs . --seeds src/ranking
 
-# Forçar re-parse ignorando cache
+# Forçar re-parse (ignorar cache após refactor)
 ctx map --title "após refactor" --dirs . --no-cache
+
+# Saída JSON para processamento
+ctx map --title "análise" --dirs . --format json
 ```
 
 **Flags:**
 
 | Flag | Padrão | Descrição |
 |---|---|---|
-| `--title` | obrigatório | Título/descrição da tarefa (usado no ranking) |
+| `--title` | obrigatório | Descrição/contexto da tarefa (usado no ranking de relevância) |
 | `--dirs` | obrigatório | Diretórios separados por vírgula |
-| `--max-tokens` | 4096 | Budget máximo de tokens |
-| `--top` | 0 (usa budget) | Número fixo de arquivos retornados |
+| `--max-tokens` | 4096 | Budget máximo de tokens para saída |
+| `--top` | 0 (usa budget) | Número fixo de arquivos (ignora budget) |
 | `--format` | text | `text` ou `json` |
-| `--seeds` | — | Dirs seed para Personalized PageRank |
-| `--no-cache` | false | Força re-parse ignorando cache |
+| `--seeds` | — | Diretórios seed para Personalized PageRank (prioriza próximos) |
+| `--no-cache` | false | Força re-parse, ignorando cache |
 
 ---
 
-## Acervos (catalog) — Busca semântica em documentos
+### 2. `ctx search` — Busca semântica em documentação
 
-Pipeline: `add` → `index` → `embed` → `search`
+**Use quando:**
+- Precisa encontrar informação em documentação indexada
+- Vai implementar algo e quer referências
+- Precisa lembrar como funciona um padrão
 
-### ctx add — Registrar acervo
+**Detecta:**
+- Palavras-chave: "encontrar", "buscar", "procurar", "onde", "como funciona"
+- Comandos shell: `grep -r`, `rg`, busca de padrões
 
 ```bash
+# Busca simples (auto-moda)
+ctx search docs "como funciona autenticação"
+ctx search api-wiki "JWT token validation"
+
+# Modos de busca explícitos
+ctx search docs "exact: erro 401"                    # correspondência exata
+ctx search docs "conceptual: segurança de sessão"    # busca semântica/conceitual
+ctx search docs "expanded: rate limiting"            # busca com expansão
+
+# Mais resultados
+ctx search docs "deploy pipeline" -k 20
+
+# Fragmento completo da resposta
+ctx search docs "configuração do banco" --full
+
+# Reranking com modelo customizado
+ctx search docs "autenticação" --reranker-model llama3.2
+```
+
+**Modos de busca:**
+- **auto** (padrão): Escolhe entre exato/vetorial automaticamente
+- **exact**: Busca por palavra-chave exata (BM25)
+- **conceptual**: Busca semântica por embeddings
+- **expanded**: Expande query com hipóteses antes de buscar
+
+---
+
+### 3. Gerenciar acervos documentais (Pipeline: add → index → embed → search)
+
+#### `ctx add` — Registrar novo acervo
+
+```bash
+# Básico
 ctx add minha-wiki --source /path/to/docs
 
 # Com filtros glob
-ctx add minha-wiki --source ./docs --include "**/*.md" --exclude "**/drafts/**"
+ctx add docs-api --source ./docs --include "**/*.md" --exclude "**/drafts/**"
 
 # Com endpoint OpenAI-compatible (ex: Ollama local)
-ctx add minha-wiki --source ./docs \
+ctx add docs-llm --source ./docs \
   --embedder-model nomic-embed-text \
   --reranker-model llama3.2 \
   --llm-endpoint http://localhost:11434
 
-# Com comando pré-indexação
-ctx add minha-wiki --source ./docs --pre-index-cmd "git pull"
+# Com comando pré-indexação (ex: atualizar repo antes)
+ctx add docs-projeto --source ./docs --pre-index-cmd "git pull"
 ```
 
-### ctx index — Indexar documentos
+#### `ctx index` — Indexar documentos (novos e modificados)
 
 ```bash
-ctx index minha-wiki                          # indexa novos e modificados
-ctx index minha-wiki --with-embed             # indexa e já gera embeddings
+ctx index minha-wiki                          # Apenas indexar
+ctx index minha-wiki --with-embed             # Indexar + gerar embeddings
 ctx index minha-wiki --with-embed --batch-size 100
 ```
 
-### ctx embed — Gerar embeddings pendentes
+#### `ctx embed` — Gerar embeddings pendentes
 
 ```bash
 ctx embed minha-wiki
-ctx embed minha-wiki --batch-size 100
+ctx embed minha-wiki --batch-size 100         # Controlar batch size
 ```
 
-### ctx search — Busca semântica
+#### `ctx list` — Listar acervos registrados
 
 ```bash
-ctx search minha-wiki "como funciona autenticação"
-
-# Prefixos de busca
-ctx search minha-wiki "exact: JWT token validation"       # correspondência exata
-ctx search minha-wiki "conceptual: segurança de sessão"   # busca conceitual
-ctx search minha-wiki "expanded: rate limiting"           # busca expandida
-
-ctx search minha-wiki "deploy pipeline" -k 20             # mais resultados
-ctx search minha-wiki "configuração do banco" --full      # fragmento completo
+ctx list                  # Lista todos os acervos
 ```
 
-### ctx list / status / compact
+#### `ctx status` — Verificar saúde do acervo
 
 ```bash
-ctx list                  # lista todos os acervos
-ctx status minha-wiki     # docs, embeddings pendentes, última indexação
-ctx compact minha-wiki    # remove dados obsoletos
+ctx status minha-wiki     # Mostra: docs, chunks, embeddings pendentes, última indexação
+```
+
+#### `ctx compact` — Limpar dados obsoletos
+
+```bash
+ctx compact minha-wiki    # Remove documentos deletados, chunks órfãos, etc
 ```
 
 ---
 
-## Quando usar cada modo
+## 📋 Matriz de Decisão Rápida
 
-| Situação | Comando |
-|---|---|
-| Entender estrutura de um codebase | `ctx map --title "..." --dirs <dir>` |
-| Focar em área específica do código | `ctx map --title "..." --dirs . --seeds <dir>` |
-| Buscar em documentação/wiki indexada | `ctx search <acervo> "<query>"` |
-| Verificar estado de um acervo | `ctx status <acervo>` |
-| Após mudanças grandes no repo | `ctx index <acervo> --with-embed` |
-
----
-
-## ctx exec — Compressão de saída de comandos
-
-`ctx exec` é um proxy de comando que reduz a saída de shell em **60-90%**, economizando tokens em operações típicas de desenvolvimento (testes, builds, git, listagens).
-
-### Quando usar
-
-Use `ctx exec run <cmd>` em:
-- **Testes:** `pytest`, `cargo test`, `npm test` (output tipicamente 1000+ linhas)
-- **Build/Lint:** `cargo build`, `eslint`, `clippy` (warnings verbosos)
-- **Controle de versão:** `git log`, `git diff` (diffs grandes)
-- **Listagem:** `ls -la`, `find .` (muitas linhas)
-- **CI/CD:** `kubectl logs`, `docker logs` (output massivo)
-
-**Não use quando:**
-- Precisa de saída bruta completa (debugging, regex, binários)
-- Comando muito curto (< 5 linhas)
-
-### Sintaxe
-
-```bash
-# Execução com filtro automático
-ctx exec run pytest tests/
-ctx exec run cargo test
-ctx exec run git log --oneline -20
-
-# Sem filtro (apenas métricas)
-ctx exec run --no-filter <cmd>
-
-# Verificar forma filtrada antes de executar
-ctx exec rewrite "cargo test"
-```
-
-### Exemplos de economia
-
-| Comando | Redução | Antes → Depois |
-|---------|---------|----------------|
-| `git log` | 90% | 4,521 tokens → 450 tokens |
-| `pytest` | 85% | 3,200 tokens → 480 tokens |
-| `cargo test` | 92% | 2,100 tokens → 168 tokens |
-
-### Entender métricas
-
-Ao final, `ctx exec` mostra resumo:
-```
-[ctx exec] Reduction: 87% (before: 4,521 tokens → after: 587 tokens)
-```
-
-Significa:
-- Saída original: ~4,521 tokens
-- Saída filtrada: ~587 tokens
-- **Economia: 87%**
-
-### Meta-operações
-
-```bash
-ctx exec report              # Mostra economia acumulada
-ctx exec discover            # Sugere oportunidades
-ctx exec validate-config     # Valida config
-```
-
-### Integração transparente com hooks
-
-Se hook instalado via `ctx exec install-hook`, o agente NÃO precisa prefixar:
-
-```bash
-pytest tests/  # Automaticamente reescrito para ctx exec run pytest tests/
-```
+| Situação | Comando | Exemplo |
+|----------|---------|---------|
+| Entender estrutura repo | `ctx map` | `ctx map --title "entender catalog" --dirs src/catalog` |
+| Entender área específica | `ctx map` + seeds | `ctx map --title "ranker" --dirs . --seeds src/ranking` |
+| Buscar padrão em docs | `ctx search` | `ctx search docs "como implementar cache"` |
+| Criar novo acervo | `ctx add` | `ctx add wiki --source ./docs` |
+| Indexar mudanças | `ctx index` | `ctx index wiki --with-embed` |
+| Verificar status | `ctx status` | `ctx status wiki` |
+| Listar tudo | `ctx list` | `ctx list` |
 
 ---
 
-## Integração com RTK
+## ⚡ Dicas de Performance
 
-```bash
-rtk ctx map --title "análise" --dirs .
-rtk ctx search minha-wiki "autenticação"
-rtk ctx exec run cargo test
-```
+- **`ctx map` é rápido** (análise local, sem rede)
+- **`ctx search` é poderoso** mas requer índice pronto (`ctx index` + `ctx embed`)
+- **Reuse Seeds**: Se vai trabalhar em `src/catalog`, use `--seeds src/catalog` para ranking inteligente
+- **Budget vs Top**: Use `--max-tokens` para controlar saída, ou `--top N` para número fixo
+- **Cache**: Reutilizado automaticamente; use `--no-cache` apenas após refactors grandes
