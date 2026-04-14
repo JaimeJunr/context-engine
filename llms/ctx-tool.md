@@ -1,187 +1,202 @@
-# ctx — CLI para repo map e recuperação semântica
+# ctx — Mapa de Repositório + Busca Semântica
 
-`ctx` oferece dois modos principais:
+**Objetivo**: Economizar tokens (60-90%) e encontrar código rapidamente em repos grandes.
 
-1. **`ctx map`** — Entender estrutura de código (pipeline: scan → extract → rank → budget)
-2. **`ctx search`** — Busca semântica em documentação indexada (embeddings + SQLite)
-3. **Gerenciamento de acervos** — `add`, `index`, `embed`, `list`, `status`, `compact`
-
-## Reescritas Automáticas (ctx-rewrite.sh)
-
-O hook `ctx-rewrite.sh` reescreve automaticamente comandos para usar `ctx`:
-
-| Padrão | Reescrita |
-|--------|-----------|
-| `find . -name "*.rs"` ou `find . -type f` | `ctx map --title "..." --dirs .` |
-| `grep -r "pattern"` ou `rg "pattern"` | `ctx search acervo "pattern"` |
-| Qualquer `ls -la`, `tree`, estrutura repo | `ctx map --top N --dirs .` |
-| Histórico git `git log`, diffs | `ctx map --seeds . --dirs .` |
+**Dois modos principais**:
+1. **`ctx map`** — Entender estrutura/fluxo de código
+2. **`ctx search`** — Buscar padrões em documentação
 
 ---
 
-## 🎯 ESTRATÉGIA: Quando usar cada comando
+## 🎯 FLUXO PRÁTICO: Identificar Module em Projeto Grande
 
-### 1. `ctx map` — Entender código rapidamente
-
-**Use quando:**
-- Precisa entender a estrutura de um diretório
-- Vai refatorar e precisa saber dependências
-- Quer ver quais arquivos são importantes
-
-**Detecta:**
-- Palavras-chave no prompt: "entender", "explorar", "mapa de", "estrutura", "arquitetura", "overview"
-- Comandos shell: `find`, `ls -la`, `tree`, `lsof`
+### Fase 1: Orientação Rápida (Topologia)
 
 ```bash
-# Básico (budget padrão: 4096 tokens)
-ctx map --title "entender autenticação" --dirs src/auth
-
-# Budget maior para repos grandes (8000 tokens)
-ctx map --title "refatorar ranking" --dirs ./src --max-tokens 8000
-
-# Múltiplos diretórios
-ctx map --title "catalog + search" --dirs src/catalog,src/ranking
-
-# Focar em arquivos-chave (top N em relevância)
-ctx map --title "entry points" --dirs . --top 15
-
-# Personalized PageRank: prioriza arquivos próximos aos seeds
-ctx map --title "mudança no ranker" --dirs . --seeds src/ranking
-
-# Forçar re-parse (ignorar cache após refactor)
-ctx map --title "após refactor" --dirs . --no-cache
-
-# Saída JSON para processamento
-ctx map --title "análise" --dirs . --format json
+# Entender arquitetura geral
+ctx map --title "entender arquitetura geral" --dirs . --max-tokens 4096
 ```
 
-**Flags:**
+**O que você vê:**
+- Diretórios principais (src, app, lib, tests)
+- Padrões de arquitetura (MVC, layered, microservices)
+- Arquivos mais importantes por relevância
 
-| Flag | Padrão | Descrição |
-|---|---|---|
-| `--title` | obrigatório | Descrição/contexto da tarefa (usado no ranking de relevância) |
-| `--dirs` | obrigatório | Diretórios separados por vírgula |
-| `--max-tokens` | 4096 | Budget máximo de tokens para saída |
-| `--top` | 0 (usa budget) | Número fixo de arquivos (ignora budget) |
-| `--format` | text | `text` ou `json` |
-| `--seeds` | — | Diretórios seed para Personalized PageRank (prioriza próximos) |
-| `--no-cache` | false | Força re-parse, ignorando cache |
+**Quando usar:**
+- Primeira vez no projeto
+- Precisa entender fluxo geral
+- Vai refatorar um módulo inteiro
 
 ---
 
-### 2. `ctx search` — Busca semântica em documentação
-
-**Use quando:**
-- Precisa encontrar informação em documentação indexada
-- Vai implementar algo e quer referências
-- Precisa lembrar como funciona um padrão
-
-**Detecta:**
-- Palavras-chave: "encontrar", "buscar", "procurar", "onde", "como funciona"
-- Comandos shell: `grep -r`, `rg`, busca de padrões
+### Fase 2: Zoom em Área Específica (Personalized PageRank)
 
 ```bash
-# Busca simples (auto-moda)
-ctx search docs "como funciona autenticação"
-ctx search api-wiki "JWT token validation"
-
-# Modos de busca explícitos
-ctx search docs "exact: erro 401"                    # correspondência exata
-ctx search docs "conceptual: segurança de sessão"    # busca semântica/conceitual
-ctx search docs "expanded: rate limiting"            # busca com expansão
-
-# Mais resultados
-ctx search docs "deploy pipeline" -k 20
-
-# Fragmento completo da resposta
-ctx search docs "configuração do banco" --full
-
-# Reranking com modelo customizado
-ctx search docs "autenticação" --reranker-model llama3.2
+# Exemplo: Preciso modificar autenticação em MVC
+ctx map --title "fluxo de autenticação" --dirs . --seeds src/auth,src/middleware,src/controllers
 ```
 
-**Modos de busca:**
-- **auto** (padrão): Escolhe entre exato/vetorial automaticamente
-- **exact**: Busca por palavra-chave exata (BM25)
-- **conceptual**: Busca semântica por embeddings
-- **expanded**: Expande query com hipóteses antes de buscar
+**O que acontece:**
+- Prioriza arquivos próximos aos `seeds` (autenticação)
+- Mostra Controller → Service → Model
+- Revela dependências de forma inteligente
 
----
-
-### 3. Gerenciar acervos documentais (Pipeline: add → index → embed → search)
-
-#### `ctx add` — Registrar novo acervo
-
-```bash
-# Básico
-ctx add minha-wiki --source /path/to/docs
-
-# Com filtros glob
-ctx add docs-api --source ./docs --include "**/*.md" --exclude "**/drafts/**"
-
-# Com endpoint OpenAI-compatible (ex: Ollama local)
-ctx add docs-llm --source ./docs \
-  --embedder-model nomic-embed-text \
-  --reranker-model llama3.2 \
-  --llm-endpoint http://localhost:11434
-
-# Com comando pré-indexação (ex: atualizar repo antes)
-ctx add docs-projeto --source ./docs --pre-index-cmd "git pull"
+**Exemplo output:**
 ```
-
-#### `ctx index` — Indexar documentos (novos e modificados)
-
-```bash
-ctx index minha-wiki                          # Apenas indexar
-ctx index minha-wiki --with-embed             # Indexar + gerar embeddings
-ctx index minha-wiki --with-embed --batch-size 100
-```
-
-#### `ctx embed` — Gerar embeddings pendentes
-
-```bash
-ctx embed minha-wiki
-ctx embed minha-wiki --batch-size 100         # Controlar batch size
-```
-
-#### `ctx list` — Listar acervos registrados
-
-```bash
-ctx list                  # Lista todos os acervos
-```
-
-#### `ctx status` — Verificar saúde do acervo
-
-```bash
-ctx status minha-wiki     # Mostra: docs, chunks, embeddings pendentes, última indexação
-```
-
-#### `ctx compact` — Limpar dados obsoletos
-
-```bash
-ctx compact minha-wiki    # Remove documentos deletados, chunks órfãos, etc
+src/controllers/AuthController.ts
+src/services/AuthService.ts
+src/models/User.ts
+src/middleware/AuthMiddleware.ts
+src/utils/tokenService.ts
 ```
 
 ---
 
-## 📋 Matriz de Decisão Rápida
+### Fase 3: Localizar Arquivo Específico (Grep/Find)
+
+```bash
+# Se busco o UserController:
+grep -r "class UserController" src/controllers
+# → Acha: src/controllers/UserController.ts
+
+# Ou se busco por padrão de arquivo:
+find src/controllers -name "*UserController*"
+```
+
+**Padrão de nomes no MVC:**
+- Controllers: `src/controllers/*Controller.ts`
+- Services: `src/services/*Service.ts`
+- Models: `src/models/*Model.ts`
+- Routes: `src/routes/*Routes.ts`
+
+---
+
+### Fase 4: Rastrear Dependências (Read + Grep)
+
+```bash
+# 1. Abrir o Controller
+# (Read to see imports)
+
+# 2. Ver quais Services usa
+grep "import.*Service" src/controllers/UserController.ts
+grep "this\\..*Service" src/controllers/UserController.ts
+# → output: this.userService.createUser()
+
+# 3. Localizar o Service correspondente
+find src/services -name "*UserService*"
+
+# 4. Ver métodos do Service
+grep "createUser" src/services/UserService.ts
+```
+
+**Pattern típico no MVC:**
+```typescript
+// UserController.ts
+export class UserController {
+  constructor(private userService: UserService) {}
+  
+  async register(req, res) {
+    const user = await this.userService.createUser(req.body);
+    res.json(user);
+  }
+}
+```
+
+---
+
+## 📊 MATRIZ: Quando Usar Cada Comando
 
 | Situação | Comando | Exemplo |
 |----------|---------|---------|
-| Entender estrutura repo | `ctx map` | `ctx map --title "entender catalog" --dirs src/catalog` |
-| Entender área específica | `ctx map` + seeds | `ctx map --title "ranker" --dirs . --seeds src/ranking` |
-| Buscar padrão em docs | `ctx search` | `ctx search docs "como implementar cache"` |
-| Criar novo acervo | `ctx add` | `ctx add wiki --source ./docs` |
-| Indexar mudanças | `ctx index` | `ctx index wiki --with-embed` |
-| Verificar status | `ctx status` | `ctx status wiki` |
-| Listar tudo | `ctx list` | `ctx list` |
+| **Entender arquitetura geral** | `ctx map` | `ctx map --title "arquitetura" --dirs .` |
+| **Focar em módulo específico** | `ctx map --seeds` | `ctx map --title "auth" --dirs . --seeds src/auth` |
+| **Achar um arquivo** | `grep` ou `find` | `grep -r "class AuthService" src/` |
+| **Ver fluxo Controller→Service→Model** | `Read` + `Grep` | `Read UserController.ts`, depois `grep "service\."` |
+| **Buscar padrão em docs** | `ctx search` | `ctx search docs "como validar email"` |
 
 ---
 
-## ⚡ Dicas de Performance
+## 💡 EXEMPLO REAL: "Adicionar Validação de Email no Cadastro"
 
-- **`ctx map` é rápido** (análise local, sem rede)
-- **`ctx search` é poderoso** mas requer índice pronto (`ctx index` + `ctx embed`)
-- **Reuse Seeds**: Se vai trabalhar em `src/catalog`, use `--seeds src/catalog` para ranking inteligente
-- **Budget vs Top**: Use `--max-tokens` para controlar saída, ou `--top N` para número fixo
-- **Cache**: Reutilizado automaticamente; use `--no-cache` apenas após refactors grandes
+**Passo 1:** Encontrar o Controller de cadastro
+```bash
+grep -r "register\|signup\|create.*user" src/controllers --include="*.ts"
+# Output: src/controllers/UserController.ts
+```
+
+**Passo 2:** Abrir e ler o UserController
+```
+→ Ver: import { UserService } from ../services
+→ Ver: this.userService.createUser(data)
+```
+
+**Passo 3:** Localizar o UserService
+```bash
+find src/services -name "*UserService*"
+# Output: src/services/UserService.ts
+```
+
+**Passo 4:** Abrir e ler UserService.createUser()
+```
+→ Ver: onde os dados são processados
+→ Ver: quais validações já existem
+```
+
+**Passo 5:** Escrever teste (TDD)
+```typescript
+// UserService.test.ts
+test("deve rejeitar email inválido", () => {
+  expect(() => userService.createUser({ email: "invalid" }))
+    .toThrow("Email inválido");
+});
+```
+
+**Passo 6:** Implementar validação no Service
+**Passo 7:** Executar testes
+**Passo 8:** Verificar se Controller passa dados corretamente
+
+---
+
+## 🚀 COMANDOS ESSENCIAIS (Copy-Paste)
+
+```bash
+# 1. Ver estrutura geral
+ctx map --title "arquitetura" --dirs . --max-tokens 4096
+
+# 2. Focar em módulo (ex: autenticação)
+ctx map --title "auth module" --dirs . --seeds src/auth
+
+# 3. Achar Controller específico
+grep -r "class.*Controller" src/controllers | grep -i "user\|auth\|product"
+
+# 4. Ver imports/dependências
+grep "import\|require" src/controllers/UserController.ts | head -20
+
+# 5. Rastrear método específico
+grep -n "createUser\|register" src/services/UserService.ts
+
+# 6. Buscar em documentação (se houver wiki/docs indexado)
+ctx search docs "validação de email"
+
+# 7. Ver testes relacionados
+find . -path "*/test*" -name "*User*" -type f
+```
+
+---
+
+## ⚡ PRO TIPS
+
+- **ctx map é rápido**: Usa análise local, sem rede. Execute sempre que não tiver certeza.
+- **Personalized PageRank (--seeds)**: Prioriza arquivos próximos aos seed directories. Muito útil em MVC.
+- **Budget**: Use `--max-tokens 8000` para repos grandes; padrão é 4096.
+- **Top N**: Use `--top 20` se só quer os 20 arquivos mais relevantes (ignora budget).
+- **Seeds múltiplos**: `--seeds src/auth,src/middleware,src/utils` para priorizar vários dirs.
+
+---
+
+## ❌ ANTI-PATTERNS (O que NÃO fazer)
+
+- ❌ Ler todos os arquivos com `ls -la src/` → Use `ctx map` em vez disso
+- ❌ `grep -r ".*"` sem padrão → Seja específico: `grep -r "class.*Service"`
+- ❌ Explorar aleatorimente → Use `ctx map --seeds <dir>` para navegar inteligente
+- ❌ Esperar entender tudo de uma vez → Use Fase 1 → Fase 2 → Fase 3 progressivamente
