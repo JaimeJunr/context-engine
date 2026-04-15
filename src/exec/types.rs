@@ -92,7 +92,7 @@ pub struct DayBreakdown {
 }
 
 /// Configuração do pipeline de filtragem
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct FilterConfig {
     pub strip_ansi: bool,
     pub replacements: Vec<(String, String)>,
@@ -105,6 +105,25 @@ pub struct FilterConfig {
     pub max_lines: Option<usize>,
     pub on_empty: Option<String>,
     pub filter_stderr: bool,
+    /// Pré-processamento do input antes dos estágios de filtragem
+    pub preprocess: Option<fn(&str) -> String>,
+}
+
+impl std::fmt::Debug for FilterConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FilterConfig")
+            .field("strip_ansi", &self.strip_ansi)
+            .field("strip_lines_matching", &self.strip_lines_matching)
+            .field("keep_lines_matching", &self.keep_lines_matching)
+            .field("truncate_lines_at", &self.truncate_lines_at)
+            .field("head_lines", &self.head_lines)
+            .field("tail_lines", &self.tail_lines)
+            .field("max_lines", &self.max_lines)
+            .field("on_empty", &self.on_empty)
+            .field("filter_stderr", &self.filter_stderr)
+            .field("preprocess", &self.preprocess.map(|_| "<fn>"))
+            .finish()
+    }
 }
 
 /// Regra de curto-circuito global

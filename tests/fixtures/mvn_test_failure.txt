@@ -1,0 +1,22 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] --------------------------< com.example:app >---------------------------
+[INFO] Building app 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-surefire-plugin:2.22.2:test (default-test) @ app ---
+[INFO]
+[WARNING] Tests run: 5, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 1.234 s <<< FAILURE!
+[ERROR] AuthServiceTest.testLoginInvalid  Time elapsed: 0.456 s  <<< FAILURE!
+[ERROR] java.lang.AssertionError: expected: false but was: true
+[ERROR]     at AuthServiceTest.java:42
+[INFO]
+[INFO] Results:
+[INFO] Tests run: 5, Failures: 2, Errors: 0, Skipped: 0
+[INFO]
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 8.543 s
+[INFO] Finished at: 2024-01-01T00:00:00Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:2.22.2:test

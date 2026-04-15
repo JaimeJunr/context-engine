@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Configura Claude Code para o projeto context-engine
+# - Compila e instala ctx (versão mais recente)
 # - Instala regras do projeto em ~/.claude/rules/
-# - Instala RTK hook para economizar tokens
-# - Valida dependências (rtk, jq)
+# - Instala ctx-rewrite hook para comprimir output de comandos
+# - Valida dependências (ctx, jq)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,6 +13,7 @@ CLAUDE_DIR="$HOME/.claude"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 RULES_DIR="$CLAUDE_DIR/rules"
 HOOKS_DIR="$CLAUDE_DIR/hooks"
+LOCAL_BIN_DIR="$HOME/.local/bin"
 
 # Cores para output
 RED='\033[0;31m'
@@ -23,15 +25,33 @@ log_info() { echo -e "${GREEN}✓${NC} $1"; }
 log_warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
 
+# === Compilar e Instalar ctx ===
+echo "=== Compilando e instalando ctx ==="
+mkdir -p "$LOCAL_BIN_DIR"
+
+# Build release
+cd "$REPO_ROOT"
+cargo build --release 2>&1 | tail -5
+if [ -f "target/release/ctx" ]; then
+  cp "target/release/ctx" "$LOCAL_BIN_DIR/ctx"
+  chmod +x "$LOCAL_BIN_DIR/ctx"
+  log_info "ctx compilado e instalado em $LOCAL_BIN_DIR/ctx"
+else
+  log_error "Falha ao compilar ctx"
+  exit 1
+fi
+
 # === Validação de Dependências ===
-echo "=== Verificando dependências ==="
-if ! command -v rtk &>/dev/null; then
-  log_warn "rtk não encontrado. Token savings desabilitado."
-  log_info "Instale: cargo install rtk"
+echo -e "\n=== Verificando dependências ==="
+if command -v ctx &>/dev/null; then
+  log_info "ctx encontrado (versão: $(ctx --version))"
+else
+  log_error "ctx não foi instalado corretamente"
+  exit 1
 fi
 
 if ! command -v jq &>/dev/null; then
-  log_warn "jq não encontrado. RTK hook não funcionará."
+  log_warn "jq não encontrado. ctx-rewrite hook não funcionará."
   log_info "Instale: apt-get install jq (ou equivalente)"
 fi
 
@@ -39,7 +59,7 @@ fi
 echo -e "\n=== Instalando Regras do Projeto ==="
 mkdir -p "$RULES_DIR"
 
-# Copia regras do projeto
+# Copia regras do projeto (.claude/rules/)
 if [ -d "$REPO_ROOT/.claude/rules" ]; then
   find "$REPO_ROOT/.claude/rules" -type f -name "*.md" | while read -r file; do
     filename=$(basename "$file")
@@ -51,83 +71,34 @@ else
   log_warn "Nenhuma regra do projeto encontrada em $REPO_ROOT/.claude/rules"
 fi
 
-# === Instalar RTK Hook ===
-echo -e "\n=== Instalando RTK Hook ==="
-if command -v rtk &>/dev/null && command -v jq &>/dev/null; then
+# Copia rule de ctx (llms/rules/)
+if [ -d "$REPO_ROOT/llms/rules" ]; then
+  find "$REPO_ROOT/llms/rules" -type f -name "*.md" | while read -r file; do
+    filename=$(basename "$file")
+    dest="$RULES_DIR/$filename"
+    cp "$file" "$dest"
+    log_info "Regra instalada: $filename"
+  done
+else
+  log_warn "Nenhuma rule de ctx encontrada em $REPO_ROOT/llms/rules"
+fi
+
+# === Instalar ctx-rewrite Hook ===
+echo -e "\n=== Instalando ctx-rewrite Hook ==="
+if command -v jq &>/dev/null && command -v ctx &>/dev/null; then
   mkdir -p "$HOOKS_DIR"
 
-  # Copia o RTK hook se existir no projeto
-  if [ -f "$REPO_ROOT/scripts/rtk-rewrite.sh" ]; then
-    cp "$REPO_ROOT/scripts/rtk-rewrite.sh" "$HOOKS_DIR/rtk-rewrite.sh"
-    chmod +x "$HOOKS_DIR/rtk-rewrite.sh"
-    log_info "RTK hook instalado"
+  # Copia o ctx-rewrite hook do projeto (agora em llms/hooks/)
+  if [ -f "$REPO_ROOT/llms/hooks/ctx-rewrite.sh" ]; then
+    cp "$REPO_ROOT/llms/hooks/ctx-rewrite.sh" "$HOOKS_DIR/ctx-rewrite.sh"
+    chmod +x "$HOOKS_DIR/ctx-rewrite.sh"
+    log_info "ctx-rewrite hook instalado"
   else
-    # Cria hook genérico baseado no template do usuário
-    cat > "$HOOKS_DIR/rtk-rewrite.sh" << 'HOOK_EOF'
-#!/usr/bin/env bash
-# rtk-hook-version: 3
-# RTK Claude Code hook — rewrites commands to use rtk for token savings
-# Requires: rtk >= 0.23.0, jq
-
-[ -x "$(command -v jq)" ] || exit 0
-[ -x "$(command -v rtk)" ] || exit 0
-
-RTK_VERSION=$(rtk --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-if [ -n "$RTK_VERSION" ]; then
-  MAJOR=$(echo "$RTK_VERSION" | cut -d. -f1)
-  MINOR=$(echo "$RTK_VERSION" | cut -d. -f2)
-  if [ "$MAJOR" -eq 0 ] && [ "$MINOR" -lt 23 ]; then
-    exit 0
-  fi
-fi
-
-INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
-[ -z "$CMD" ] && exit 0
-
-REWRITTEN=$(rtk rewrite "$CMD" 2>/dev/null)
-EXIT_CODE=$?
-
-case $EXIT_CODE in
-  0)
-    [ "$CMD" = "$REWRITTEN" ] && exit 0
-    ;;
-  1|2)
-    exit 0
-    ;;
-  3)
-    ;;
-  *)
-    exit 0
-    ;;
-esac
-
-ORIGINAL_INPUT=$(echo "$INPUT" | jq -c '.tool_input')
-UPDATED_INPUT=$(echo "$ORIGINAL_INPUT" | jq --arg cmd "$REWRITTEN" '.command = $cmd')
-
-if [ "$EXIT_CODE" -eq 3 ]; then
-  jq -n --argjson updated "$UPDATED_INPUT" '{
-    "hookSpecificOutput": {
-      "hookEventName": "PreToolUse",
-      "updatedInput": $updated
-    }
-  }'
-else
-  jq -n --argjson updated "$UPDATED_INPUT" '{
-    "hookSpecificOutput": {
-      "hookEventName": "PreToolUse",
-      "permissionDecision": "allow",
-      "permissionDecisionReason": "RTK auto-rewrite",
-      "updatedInput": $updated
-    }
-  }'
-fi
-HOOK_EOF
-    chmod +x "$HOOKS_DIR/rtk-rewrite.sh"
-    log_info "RTK hook criado (genérico)"
+    log_error "ctx-rewrite.sh não encontrado em $REPO_ROOT/llms/hooks/"
+    exit 1
   fi
 else
-  log_warn "RTK hook não instalado (rtk ou jq faltando)"
+  log_warn "ctx-rewrite hook não instalado (jq ou ctx faltando)"
 fi
 
 # === Configurar settings.json ===
@@ -158,15 +129,22 @@ echo -e "\n=== Resumo da Instalação ==="
 log_info "Configuração concluída!"
 echo -e "
 📁 Diretórios:
+  - ctx:    $LOCAL_BIN_DIR/ctx
   - Regras: $RULES_DIR
   - Hooks:  $HOOKS_DIR
 
-🔧 Para habilitar o RTK hook manualmente:
+🚀 Comandos do ctx:
+  - ctx map --title \"título\" --dirs . --max-tokens 4096
+  - ctx catalog search acervo \"query\"
+  - ctx exec report (relatório de economia de tokens)
+
+🔧 Para habilitar o ctx-rewrite hook manualmente:
   1. Abra Claude Code → Settings
   2. Vá para 'Hooks' → 'PreToolUse'
-  3. Adicione: $HOOKS_DIR/rtk-rewrite.sh
+  3. Adicione: $HOOKS_DIR/ctx-rewrite.sh
 
 📖 Para mais info:
-  - Regras: https://github.com/anthropics/claude-code/wiki/Rules
-  - RTK: https://github.com/rtk-ai/rtk
+  - Regras: $RULES_DIR
+  - ctx guide: $REPO_ROOT/llms/rules/context-engine.md
+  - CLAUDE.md: $REPO_ROOT/CLAUDE.md
 "

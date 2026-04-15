@@ -4,7 +4,7 @@
 
 ## O que é rastreado
 
-Cada execução de `ctx exec run <cmd>` registra:
+Cada execução de `ctx exec <cmd>` registra:
 
 | Campo | Descrição |
 |-------|-----------|

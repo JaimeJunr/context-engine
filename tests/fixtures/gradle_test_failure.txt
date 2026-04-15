@@ -1,0 +1,28 @@
+> Task :compileJava
+> Task :compileGroovy
+> Task :processResources UP-TO-DATE
+> Task :classes
+
+> Task :test
+
+AuthServiceSpec > login com credenciais inválidas FAILED
+    org.spockframework.runtime.SpockAssertionError at AuthServiceSpec.groovy:42
+        Expected: false
+             got: true
+
+FundServiceSpec > calcular NAV FAILED
+    java.lang.ArithmeticException: / by zero
+        at FundService.groovy:87
+
+3 tests completed, 2 failed
+
+> Task :test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: build/reports/tests/test/index.html
+
+BUILD FAILED in 12s
+4 actionable tasks: 4 executed

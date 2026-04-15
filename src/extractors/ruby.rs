@@ -53,6 +53,7 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
                     .unwrap_or_default();
                 sigs.push(format!("{}  def {}{}", pad, src_slice(name, src), params));
             }
+            return;
         }
         "singleton_method" => {
             if let Some(name) = node.child_by_field_name("name") {
@@ -67,6 +68,7 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
                     params
                 ));
             }
+            return;
         }
         "call" => {
             let method_text = node
@@ -82,6 +84,7 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
                     .to_string();
                 sigs.push(format!("{}  {}", pad, first_line));
             }
+            return;
         }
         _ => {}
     }
@@ -137,5 +140,100 @@ fn walk_refs(node: Node, src: &[u8], refs: &mut Vec<String>) {
     }
     for child in node.children(&mut node.walk()) {
         walk_refs(child, src, refs);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extrai_metodo_de_instancia() {
+        let src = b"class Foo\n  def bar(x)\n  end\nend";
+        let sigs = extract(src);
+        assert!(
+            sigs.iter().any(|s| s.contains("def bar(x)")),
+            "deve conter 'def bar(x)', sigs: {:?}",
+            sigs
+        );
+    }
+
+    #[test]
+    fn extrai_metodo_de_classe() {
+        let src = b"class Foo\n  def self.create(attrs)\n  end\nend";
+        let sigs = extract(src);
+        assert!(
+            sigs.iter().any(|s| s.contains("def self.create")),
+            "deve conter 'def self.create', sigs: {:?}",
+            sigs
+        );
+    }
+
+    #[test]
+    fn extrai_modulo() {
+        let src = b"module Concerns\nend";
+        let sigs = extract(src);
+        assert!(
+            sigs.iter().any(|s| s.contains("module Concerns")),
+            "deve conter 'module Concerns', sigs: {:?}",
+            sigs
+        );
+    }
+
+    #[test]
+    fn extrai_attr_accessor() {
+        let src = b"class User\n  attr_accessor :name\nend";
+        let sigs = extract(src);
+        assert!(
+            sigs.iter().any(|s| s.contains("attr_accessor :name")),
+            "deve conter 'attr_accessor :name', sigs: {:?}",
+            sigs
+        );
+    }
+
+    #[test]
+    fn extrai_has_many() {
+        let src = b"class Post\n  has_many :comments\nend";
+        let sigs = extract(src);
+        assert!(
+            sigs.iter().any(|s| s.contains("has_many :comments")),
+            "deve conter 'has_many :comments', sigs: {:?}",
+            sigs
+        );
+    }
+
+    #[test]
+    fn extrai_belongs_to() {
+        let src = b"class Comment\n  belongs_to :post\nend";
+        let sigs = extract(src);
+        assert!(
+            sigs.iter().any(|s| s.contains("belongs_to")),
+            "deve conter 'belongs_to', sigs: {:?}",
+            sigs
+        );
+    }
+
+    #[test]
+    fn nao_duplica_metodos() {
+        let src = b"class Foo\n  def bar(x)\n  end\n  def self.baz\n  end\nend";
+        let sigs = extract(src);
+        // Cada assinatura deve aparecer exatamente uma vez
+        for sig in &sigs {
+            let count = sigs.iter().filter(|s| *s == sig).count();
+            assert_eq!(
+                count, 1,
+                "assinatura '{sig}' aparece {count} vezes (duplicata detectada), sigs: {sigs:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn nao_duplica_rails_macros() {
+        let src = b"class Post\n  has_many :comments\n  belongs_to :user\nend";
+        let sigs = extract(src);
+        for sig in &sigs {
+            let count = sigs.iter().filter(|s| *s == sig).count();
+            assert_eq!(count, 1, "assinatura '{sig}' duplicada, sigs: {sigs:?}");
+        }
     }
 }

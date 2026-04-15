@@ -91,6 +91,60 @@ pub fn health(name: &str) -> Result<CollectionHealth> {
     collection_health(name)
 }
 
+/// Estatísticas retornadas pelo bootstrap
+pub struct BootstrapStats {
+    pub collection_name: String,
+    pub files_discovered: usize,
+    pub chunks_indexed: usize,
+}
+
+/// Registra e indexa um diretório de documentação em um único passo.
+///
+/// Equivalente a `ctx add` + `ctx index`, derivando o nome da collection do
+/// nome do diretório quando não fornecido.
+pub fn bootstrap(path: &std::path::Path, name: Option<&str>) -> Result<BootstrapStats> {
+    let collection_name = name
+        .map(|s| s.to_string())
+        .or_else(|| {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string())
+        })
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "não foi possível derivar nome da collection de '{}'",
+                path.display()
+            )
+        })?;
+
+    let col = types::Collection {
+        name: collection_name.clone(),
+        sources: vec![path.to_string_lossy().to_string()],
+        include_patterns: vec![
+            "**/*.md".to_string(),
+            "**/*.txt".to_string(),
+            "**/*.rst".to_string(),
+            "**/README*".to_string(),
+            "**/CHANGELOG*".to_string(),
+        ],
+        exclude_patterns: vec![],
+        path_contexts: vec![],
+        pre_index_cmd: None,
+        embedder_model: None,
+        reranker_model: None,
+        llm_endpoint: None,
+    };
+
+    add_collection(col)?;
+    let stats = index(&collection_name)?;
+
+    Ok(BootstrapStats {
+        collection_name,
+        files_discovered: stats.scanned,
+        chunks_indexed: stats.indexed,
+    })
+}
+
 // Compactação do repositório interno (RD-30)
 pub fn compact(name: &str) -> Result<()> {
     // Valida que o acervo existe

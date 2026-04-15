@@ -1,0 +1,20 @@
+   Compiling context-engine v0.1.0 (/home/user/project)
+    Finished test [unoptimized + debuginfo] target(s) in 1.89s
+     Running unittests src/lib.rs (target/debug/deps/context_engine-abc123)
+
+running 13 tests
+test ranking::bm25::tests::empty_corpus_returns_empty ... ok
+test ranking::bm25::tests::empty_query_returns_empty ... ok
+test ranking::bm25::tests::matching_doc_ranks_above_non_matching ... ok
+test ranking::bm25::tests::result_sorted_descending_by_score ... ok
+test ranking::bm25::tests::identical_docs_have_equal_scores ... ok
+test ranking::bm25::tests::top_n_truncates_result ... ok
+test ranking::bm25::tests::top_n_larger_than_corpus_returns_all ... ok
+test ranking::bm25::tests::top_n_zero_returns_all ... ok
+test ranking::bm25::tests::short_query_filtered_returns_empty ... ok
+test exec::pipeline::tests::test_head_lines ... ok
+test exec::pipeline::tests::test_limite_absoluto_de_linhas ... ok
+test exec::pipeline::tests::test_curto_circuito_global ... ok
+test exec::pipeline::tests::test_nivel_minimo_preserva_estrutura_funcional ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s

@@ -36,6 +36,9 @@ enum Commands {
         /// Dirs seed para PPR separados por vírgula (ativa Personalized PageRank)
         #[arg(long)]
         seeds: Option<String>,
+        /// Profundidade máxima de scan de diretórios (default: 15)
+        #[arg(long, default_value = "15")]
+        max_depth: usize,
         /// Ignorar cache (forçar re-parse)
         #[arg(long)]
         no_cache: bool,
@@ -119,12 +122,34 @@ enum Commands {
     },
 
     /// Configura interativamente endpoint e modelos LLM
-    Init,
+    #[command(name = "setup", alias = "init-llm")]
+    Setup,
+
+    /// Detecta stack do projeto e gera .ctx/config.toml local
+    #[command(name = "init")]
+    WorkspaceInit {
+        /// Diretório alvo (padrão: diretório atual)
+        #[arg(long, default_value = ".")]
+        path: String,
+        /// Sobrescreve .ctx/config.toml se já existir
+        #[arg(long)]
+        force: bool,
+    },
 
     /// Gerencia configuração global (~/.ctx/config.toml)
     Config {
         #[command(subcommand)]
         cmd: ConfigCmd,
+    },
+
+    /// Registra e indexa um diretório em um único passo (add + index)
+    Bootstrap {
+        /// Diretório a indexar
+        #[arg(long)]
+        path: String,
+        /// Nome da collection (padrão: nome do diretório)
+        #[arg(long)]
+        name: Option<String>,
     },
 
     /// Proxy de comandos com economia de tokens
@@ -148,6 +173,9 @@ enum ExecCommand {
         #[arg(long)]
         days: Option<u32>,
     },
+    /// Executa qualquer comando, aplicando filtro se disponível (passthrough caso contrário)
+    #[command(external_subcommand)]
+    Run(Vec<String>),
 }
 
 #[derive(Subcommand)]
@@ -177,6 +205,7 @@ fn execute(cli: Cli) -> Result<()> {
             max_tokens,
             fmt,
             seeds,
+            max_depth,
             no_cache,
         } => {
             if no_cache {
@@ -200,7 +229,15 @@ fn execute(cli: Cli) -> Result<()> {
                     .collect()
             });
 
-            let result = run(&title, &dirs, top, max_tokens, seeds.as_deref(), &fmt);
+            let result = run(
+                &title,
+                &dirs,
+                top,
+                max_tokens,
+                seeds.as_deref(),
+                &fmt,
+                max_depth,
+            );
             print!("{}", result);
         }
 
@@ -325,8 +362,18 @@ fn execute(cli: Cli) -> Result<()> {
             println!("Compactação de '{}' concluída.", name);
         }
 
-        Commands::Init => {
+        Commands::Setup => {
             context_engine::config::run_init_wizard()?;
+        }
+
+        Commands::WorkspaceInit { path, force } => {
+            match context_engine::init::run_workspace_init(&path, force) {
+                Ok(report) => println!("{}", report),
+                Err(e) => {
+                    eprintln!("erro: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
 
         Commands::Config { cmd } => {
@@ -358,6 +405,22 @@ fn execute(cli: Cli) -> Result<()> {
                     );
                 }
             }
+        }
+
+        Commands::Bootstrap { path, name } => {
+            let path = std::path::Path::new(&path);
+            if !path.exists() {
+                anyhow::bail!("diretório '{}' não encontrado", path.display());
+            }
+            let stats = catalog::bootstrap(path, name.as_deref())?;
+            println!(
+                "Bootstrap '{}': {} arquivos descobertos, {} chunks indexados.",
+                stats.collection_name, stats.files_discovered, stats.chunks_indexed
+            );
+            println!(
+                "Próximo passo: ctx embed {} --batch-size 50",
+                stats.collection_name
+            );
         }
 
         Commands::Exec { cmd } => match cmd {
@@ -400,6 +463,11 @@ fn execute(cli: Cli) -> Result<()> {
                         }
                     }
                 }
+            }
+            ExecCommand::Run(argv) => {
+                use context_engine::exec::run_proxy;
+                let exit_code = run_proxy(argv)?;
+                std::process::exit(exit_code);
             }
         },
     }

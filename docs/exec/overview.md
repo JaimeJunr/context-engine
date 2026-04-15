@@ -40,27 +40,28 @@ Comando do usuário
 
 | Subcomando | Função |
 |---|---|
-| `ctx exec run <cmd>` | Executa comando com filtragem automática |
+| `ctx exec <cmd> [args...]` | Executa comando com filtragem automática (passthrough se sem filtro) |
 | `ctx exec report` | Relatório de economia acumulada |
-| `ctx exec rewrite <cmd>` | Retorna forma filtrada do comando |
-| `ctx exec discover` | Analisa histórico para oportunidades |
 
 ## Domínios suportados
 
-- Navegação de arquivos (ls, find, tree)
-- Controle de versão (git status, log, diff)
-- Testes (pytest, cargo test, jest)
-- Build/lint (cargo, npm, eslint)
-- Cloud/container (docker, kubectl, aws cli)
-- Rede/dados (curl, jq, sqlite)
-- Outros (via filtros declarativos)
+- Navegação de arquivos: `ls`, `find`, `tree`, `grep`, `rg`
+- Controle de versão: `git status`, `git log`, `git diff`, `git show`, `git branch`
+- Build/teste Rust: `cargo test`, `cargo build`, `cargo clippy`, `cargo fmt`, `cargo run`
+- Build/teste Node: `npm`, `yarn`, `pnpm` (install, test, build), `jest`, `vitest`
+- Testes Python: `pytest`, `python`
+- GitHub CLI: `gh pr`, `gh issue`, `gh run`
+- Cloud/container: `docker ps`, `docker images`, `docker logs`, `kubectl get`, `kubectl logs`
+- AWS CLI: `aws` (genérico), `aws logs` (otimizado)
+- Rede/dados: `curl`, `wget`, `jq`, `sqlite3`
+- Qualquer outro comando: **passthrough transparente** (executa normalmente, sem erro)
 
 ## Integração com LLMs
 
 Dois modos:
 
-1. **Explícito:** Usuário prefixas comando com `ctx exec run`
-2. **Transparente:** Hook de pré-execução intercepta automaticamente (instalado via `ctx exec install-hook`)
+1. **Explícito:** Prefixar comando com `ctx exec` — ex: `ctx exec cargo test`
+2. **Transparente:** Hook de pré-execução intercepta automaticamente (configurar via Claude Code Settings → Hooks → PreToolUse)
 
 ## Métricas
 

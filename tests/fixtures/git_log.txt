@@ -1,0 +1,29 @@
+commit a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
+Author: Jaime <jaime@example.com>
+Date:   Mon Apr 14 20:00:00 2026 +0000
+
+    feat(exec): implement run_proxy with universal passthrough
+
+commit b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3
+Author: Jaime <jaime@example.com>
+Date:   Mon Apr 14 18:00:00 2026 +0000
+
+    fix(registry): correct lookup key format for git subcommands
+
+commit c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4
+Author: Jaime <jaime@example.com>
+Date:   Mon Apr 14 16:00:00 2026 +0000
+
+    refactor(filters): extract filter presets into dedicated modules
+
+commit d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5
+Author: Jaime <jaime@example.com>
+Date:   Sun Apr 13 12:00:00 2026 +0000
+
+    docs: update exec overview and metrics documentation
+
+commit e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6
+Author: Jaime <jaime@example.com>
+Date:   Sat Apr 12 10:00:00 2026 +0000
+
+    chore: fix ctx-rewrite hook syntax (exec run → exec)

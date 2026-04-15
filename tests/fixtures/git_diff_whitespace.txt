@@ -1,0 +1,37 @@
+diff --git a/src/auth.rs b/src/auth.rs
+index 1234567..abcdef0 100644
+--- a/src/auth.rs
++++ b/src/auth.rs
+@@ -1,10 +1,12 @@
+ use std::collections::HashMap;
+
++
++
+ pub struct AuthService {
+     sessions: HashMap<String, Session>,
+ }
+
+ impl AuthService {
++
+     pub fn new() -> Self {
+         Self {
+             sessions: HashMap::new(),
+@@ -15,6 +17,8 @@ impl AuthService {
+     pub fn validate(&self, token: &str) -> bool {
+         self.sessions.contains_key(token)
+     }
++
++
+ }
+diff --git a/src/main.rs b/src/main.rs
+index 9876543..fedcba0 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,5 +1,7 @@
+ fn main() {
++    // init
+     println!("Hello");
+-    println!("World");
++    println!("World!");
++
+ }

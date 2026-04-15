@@ -3,22 +3,32 @@ pub mod catalog;
 pub mod config;
 pub mod exec;
 pub mod extractors;
+pub mod init;
 pub mod output;
 pub mod ranking;
 pub mod scanner;
 pub mod tokenizer;
 
+pub use exec::run_proxy;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use cache::{batch_write, cache_get, cache_get_refs, cache_key};
+use cache::{batch_write, cache_get, cache_get_refs, cache_key, map_cache_get, map_cache_set};
 use extractors::{extract_refs, extract_signatures};
 use rayon::prelude::*;
 use regex::Regex;
+use sha2::{Digest, Sha256};
 
 fn clean_query(title: &str) -> String {
     let re = Regex::new(r"^\[[^\]]+\]\s*").unwrap();
     re.replace(title, "").trim().to_string()
+}
+
+fn sha256_bytes(data: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hex::encode(&hasher.finalize()[..])
 }
 
 pub fn run(
@@ -28,8 +38,28 @@ pub fn run(
     max_tokens: usize,
     seeds: Option<&[String]>,
     output_format: &str,
+    max_depth: usize,
 ) -> String {
-    let files = scanner::scan_files(dirs);
+    // Verificar cache de mapa por commit SHA
+    let cache_key_map = {
+        let seeds_str = seeds.map(|s| s.join(",")).unwrap_or_default();
+        let raw = format!(
+            "{}|{}|{}|{}|{}|{}",
+            cache::git_commit_key(dirs),
+            dirs.join(","),
+            title,
+            top_n,
+            max_tokens,
+            seeds_str,
+        );
+        sha256_bytes(raw.as_bytes())
+    };
+
+    if let Some(cached) = map_cache_get(&cache_key_map) {
+        return cached;
+    }
+
+    let files = scanner::scan_files(dirs, max_depth);
     if files.is_empty() {
         return String::new();
     }
@@ -92,11 +122,22 @@ pub fn run(
         ranking::budget::fit_to_budget(&all_ranked, dirs, max_tokens)
     };
 
-    if output_format == "json" {
+    if let Some(hint) = ranking::diagnostics::boilerplate_hint(&ranked, top_n.max(1)) {
+        eprintln!("{}", hint);
+    }
+
+    if let Some(hint) = ranking::diagnostics::low_variance_hint(&ranked, top_n.max(10)) {
+        eprintln!("{}", hint);
+    }
+
+    let result = if output_format == "json" {
         output::format_json(&ranked)
     } else {
         output::format_repo_map(&ranked, dirs)
-    }
+    };
+
+    map_cache_set(&cache_key_map, &result);
+    result
 }
 
 fn build_pagerank_ranked(

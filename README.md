@@ -21,17 +21,33 @@ ctx map /path/to/repo --title "Adicionar suporte a 2FA" --max-tokens 4000
 # Saída: lista curada de arquivos + assinaturas, pronto para colar em prompt de LLM
 ```
 
-**`ctx search` — Busca semântica em documentação** (RAG local):
-- Cataloga documentação, especificações, guias
+**`ctx catalog` — Busca semântica em documentação** (RAG local):
+- Registra, indexa e busca em documentação, especificações e guias
 - Busca por intenção (não apenas palavras-chave)
 - Totalmente local (roda offline, sem APIs externas)
 
 ```bash
-# Registrar documentação
-ctx add meus-docs --source ./docs --include "**/*.md"
+# Registrar acervo documental
+ctx add meu-projeto --source ./docs --include "**/*.md"
+
+# Indexar documentos + gerar embeddings
+ctx index meu-projeto --with-embed
 
 # Buscar
-ctx search meus-docs "Como configurar autenticação OAuth?"
+ctx search meu-projeto "Como configurar autenticação OAuth?"
+```
+
+**`ctx exec` — Compressão inteligente de output**:
+- Intercepta comandos shell verbosos (testes, build, logs)
+- Filtra, comprime e entrega apenas essência do output
+- Economiza 60-90% de tokens
+
+```bash
+# Executar teste comprimindo output
+ctx exec cargo test
+
+# Ver relatório de economia acumulada
+ctx exec report
 ```
 
 ## Início Rápido
@@ -39,13 +55,17 @@ ctx search meus-docs "Como configurar autenticação OAuth?"
 ### Pré-requisitos
 
 - **Rust 1.70+** ([instalar](https://rustup.rs/))
-- Para `ctx search`: **Ollama rodando** ([instalar](https://ollama.ai/))
+- **Para `ctx map`:** nenhuma dependência adicional
+- **Para `ctx catalog` com embeddings:** Ollama rodando ([instalar](https://ollama.ai/))
   ```bash
+  # Terminal 1:
   ollama serve
-  # Em outro terminal:
-  ollama pull nomic-embed-text
-  ollama pull llama3.2
+  
+  # Terminal 2:
+  ollama pull nomic-embed-text  # embedder (padrão)
+  ollama pull llama3.2          # reranker (padrão)
   ```
+  Sem Ollama, você ainda pode usar `ctx search` com busca léxica (sem embeddings semânticos).
 
 ### Build & Install
 
@@ -76,31 +96,54 @@ ctx map \
 - `--seeds dir1,dir2` — ativar Personalized PageRank (prioriza arquivos seed)
 - `--top N` — retornar top N arquivos (se omitido, usa token budget)
 
-### Exemplo 2: `ctx search` — Documentação
+### Exemplo 2: `ctx catalog` — Busca Semântica
 
 ```bash
-# Criar catálogo de documentação
+# Registrar acervo documental
 ctx add meu-projeto \
   --source ./docs \
-  --include "**/*.md"
+  --include "**/*.md" \
+  --exclude "**/node_modules/**"
 
-# Indexar e gerar embeddings (requer Ollama)
+# Indexar documentos + gerar embeddings (requer Ollama)
 ctx index meu-projeto --with-embed
 
-# Buscar
+# Buscar por intenção
 ctx search meu-projeto "como funciona o pipeline de dados?"
 
-# Ver status
+# Ver status do acervo
 ctx status meu-projeto
+
+# Listar todos os acervos
+ctx list
+
+# Otimizar armazenamento
+ctx compact meu-projeto
 ```
 
-**Subcomandos:**
-- `add` — registrar novo catálogo documental
-- `index` — indexar + gerar embeddings (requer Ollama)
-- `search` — busca por relevância semântica
-- `list` — listar catálogos registrados
-- `status` — stats do catálogo
-- `compact` — otimizar storage
+**Subcomandos de Catalog:**
+- `add` — registrar novo acervo documental
+- `index` — indexar documentos (detecta novos/modificados)
+- `embed` — gerar embeddings para chunks pendentes
+- `search` — busca semântica no acervo
+- `list` — listar acervos registrados
+- `status` — exibir stats do acervo
+- `compact` — otimizar storage removendo dados obsoletos
+- `init` — configurar endpoint LLM interativamente
+- `config` — gerenciar configuração global
+
+### Exemplo 3: `ctx exec` — Compressão de Output
+
+```bash
+# Executar testes com compressão automática
+ctx exec run cargo test
+
+# Ver logs do build comprimidos
+ctx exec run cargo build
+
+# Relatório de economia de tokens
+ctx exec report
+```
 
 ## Linguagens Suportadas
 
@@ -125,18 +168,27 @@ Para desenvolvedores e contribuidores:
 ## Desenvolvimento
 
 ```bash
-cargo test                    # Rodar testes
-cargo clippy                  # Lint
-cargo build --release         # Build otimizado
-cargo run -- --help           # Ver subcomandos disponíveis
+cargo test                             # Rodar testes
+cargo clippy --all-targets --all-features -- -D warnings   # Lint
+cargo fmt -- --check                   # Verificar formatação
+cargo build --release                  # Build otimizado
+cargo run -- map --help                # Ver opções do subcomando map
+cargo run -- catalog --help            # Ver opções do subcomando catalog
+cargo run -- exec --help               # Ver opções do subcomando exec
 ```
+
+**Git Hooks (via Lefthook):**
+- `pre-commit`: `cargo fmt --check` + `cargo clippy` — formata e detecta erros
+- `pre-push`: `cargo test --locked --all-features` — executa suite de testes
 
 ## Performance
 
 - **Parsing:** paralelizado com `rayon` (multi-thread)
-- **Cache:** SQLite persistente (~`~/.cache/context_engine/`) — reutiliza entre execuções
+- **Cache:** SQLite persistente (`~/.cache/context_engine/`) — reutiliza entre execuções
 - **Ranking:** BM25 + PageRank híbrido (personalizável com seeds)
 - **Output:** comprimido para caber em token budget
+- **Command Compression:** `ctx exec` filtra logs verbosos, economizando 60-90% de tokens em saída de comandos
+- **Embeddings:** processados em lotes, com cache em SQLite
 
 ## Licença
 

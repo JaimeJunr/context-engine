@@ -26,6 +26,17 @@ fn skip_dirs() -> &'static HashSet<&'static str> {
             "specs",
             "__tests__",
             "contrib",
+            ".claude",
+            ".husky",
+            ".github",
+            ".vscode",
+            ".idea",
+            ".serverless",
+            ".turbo",
+            ".nx",
+            ".next",
+            ".nuxt",
+            "__pycache__",
         ]
         .iter()
         .copied()
@@ -66,7 +77,7 @@ fn is_plugin_dir(path: &Path, root: &Path) -> bool {
     false
 }
 
-pub fn scan_files(dirs: &[String]) -> Vec<PathBuf> {
+pub fn scan_files(dirs: &[String], max_depth: usize) -> Vec<PathBuf> {
     let mut files = Vec::new();
     let skip = skip_dirs();
 
@@ -83,6 +94,7 @@ pub fn scan_files(dirs: &[String]) -> Vec<PathBuf> {
             .ignore(false)
             .git_ignore(false)
             .git_global(false)
+            .max_depth(Some(max_depth))
             .sort_by_file_name(|a, b| a.cmp(b))
             .build();
 
@@ -92,8 +104,9 @@ pub fn scan_files(dirs: &[String]) -> Vec<PathBuf> {
                 continue;
             }
 
-            // Check SKIP_DIRS
-            let skip_it = path.components().any(|c| {
+            // Verifica skip_dirs apenas nos componentes relativos ao root
+            let rel = path.strip_prefix(root).unwrap_or(&path);
+            let skip_it = rel.components().any(|c| {
                 let s = c.as_os_str().to_string_lossy();
                 skip.contains(s.as_ref())
             });
@@ -132,4 +145,132 @@ pub fn scan_files(dirs: &[String]) -> Vec<PathBuf> {
     }
 
     files
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn claude_dir_is_in_skip_list() {
+        assert!(
+            skip_dirs().contains(".claude"),
+            ".claude deve estar na lista de skip"
+        );
+    }
+
+    #[test]
+    fn husky_dir_is_in_skip_list() {
+        assert!(skip_dirs().contains(".husky"));
+    }
+
+    #[test]
+    fn github_dir_is_in_skip_list() {
+        assert!(skip_dirs().contains(".github"));
+    }
+
+    #[test]
+    fn vscode_dir_is_in_skip_list() {
+        assert!(skip_dirs().contains(".vscode"));
+    }
+
+    #[test]
+    fn idea_dir_is_in_skip_list() {
+        assert!(skip_dirs().contains(".idea"));
+    }
+
+    #[test]
+    fn serverless_dir_is_in_skip_list() {
+        assert!(skip_dirs().contains(".serverless"));
+    }
+
+    #[test]
+    fn turbo_dir_is_in_skip_list() {
+        assert!(skip_dirs().contains(".turbo"));
+    }
+
+    #[test]
+    fn nx_dir_is_in_skip_list() {
+        assert!(skip_dirs().contains(".nx"));
+    }
+
+    #[test]
+    fn next_dir_is_in_skip_list() {
+        assert!(
+            skip_dirs().contains(".next"),
+            ".next deve estar na lista de skip"
+        );
+    }
+
+    #[test]
+    fn nuxt_dir_is_in_skip_list() {
+        assert!(
+            skip_dirs().contains(".nuxt"),
+            ".nuxt deve estar na lista de skip"
+        );
+    }
+
+    #[test]
+    fn pycache_dir_is_in_skip_list() {
+        assert!(
+            skip_dirs().contains("__pycache__"),
+            "__pycache__ deve estar na lista de skip"
+        );
+    }
+
+    #[test]
+    fn max_depth_1_excludes_nested_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let nested = tmp.path().join("a").join("b");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("foo.rb"), "def foo; end").unwrap();
+
+        let dir = tmp.path().to_string_lossy().to_string();
+        // max_depth=1 significa apenas o diretório raiz, sem recursão
+        let found = scan_files(&[dir], 1);
+
+        assert!(
+            found.is_empty(),
+            "max_depth=1 não deve encontrar arquivos em a/b/ (encontrou: {:?})",
+            found
+        );
+    }
+
+    #[test]
+    fn max_depth_15_scans_normal_tree() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Usa nomes que não colidem com skip_dirs
+        let nested = tmp.path().join("app").join("models").join("concerns");
+        fs::create_dir_all(&nested).unwrap();
+        let file_path = nested.join("app.rb");
+        fs::write(&file_path, "def hello; end").unwrap();
+
+        let dir = tmp.path().to_string_lossy().to_string();
+        let found = scan_files(&[dir], 15);
+
+        assert!(
+            found.contains(&file_path),
+            "max_depth=15 deve encontrar '{}' em 3 níveis de profundidade, encontrado: {:?}",
+            file_path.display(),
+            found
+        );
+    }
+
+    #[test]
+    fn files_inside_claude_dir_are_not_scanned() {
+        let tmp = tempfile::tempdir().unwrap();
+        let claude_skills = tmp.path().join(".claude").join("skills");
+        fs::create_dir_all(&claude_skills).unwrap();
+        let py_file = claude_skills.join("foo.py");
+        fs::write(&py_file, "def foo(): pass").unwrap();
+
+        let dir = tmp.path().to_string_lossy().to_string();
+        let found = scan_files(&[dir], 15);
+
+        assert!(
+            !found.contains(&py_file),
+            "arquivos em .claude/ não devem ser incluídos no scan"
+        );
+    }
 }

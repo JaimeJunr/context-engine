@@ -1,0 +1,6 @@
+npm warn saveError ENOENT: no such file or directory, open '/tmp/foo/package.json'
+npm warn enoent This is related to npm not being able to find a file.
+npm error code E404
+npm error 404 Not Found - GET https://registry.npmjs.org/@nonexistent%2fpkg
+npm error 404 '@nonexistent/pkg@latest' is not in this registry.
+npm error A complete log of this run can be found in: /home/user/.npm/_logs/2024-01-01T00_00_00_000Z-debug-0.log
