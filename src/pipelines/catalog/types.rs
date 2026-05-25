@@ -207,6 +207,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(env_embedder)]
     fn test_embedder_default_when_no_config() {
         // Sem env var, sem per-collection → usa built-in default
         let _guard = EnvVarGuard("CTX_EMBEDDER_MODEL");
@@ -229,6 +230,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(env_embedder)]
     fn test_per_collection_overrides_default() {
         let _guard = EnvVarGuard("CTX_EMBEDDER_MODEL");
         std::env::remove_var("CTX_EMBEDDER_MODEL");
@@ -249,6 +251,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(env_embedder)]
     fn test_env_var_overrides_all() {
         let _guard = EnvVarGuard("CTX_EMBEDDER_MODEL");
         std::env::set_var("CTX_EMBEDDER_MODEL", "env-model");
