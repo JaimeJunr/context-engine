@@ -1,0 +1,41 @@
+/* Cores customizadas — palette neutro dark com accent laranja-Rust */
+:root {
+	--sl-color-accent-low: #3a2a1a;
+	--sl-color-accent: #ce6f1c;
+	--sl-color-accent-high: #f0a44d;
+	--sl-color-white: #fff;
+	--sl-color-gray-1: #eee;
+	--sl-color-gray-2: #c2c2c2;
+	--sl-color-gray-3: #8b8b8b;
+	--sl-color-gray-4: #585858;
+	--sl-color-gray-5: #383838;
+	--sl-color-gray-6: #272727;
+	--sl-color-black: #181818;
+}
+
+/* Light mode tweaks */
+:root[data-theme='light'] {
+	--sl-color-accent-low: #fae5d1;
+	--sl-color-accent: #ce6f1c;
+	--sl-color-accent-high: #6b3a0d;
+}
+
+/* Hero spacing maior na landing */
+.hero {
+	padding: 4rem 0 3rem;
+}
+
+/* Code blocks com contraste maior */
+.expressive-code {
+	margin: 1rem 0;
+}
+
+/* Tabela com células confortáveis */
+.sl-markdown-content table {
+	font-size: 0.9rem;
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+	padding: 0.5rem 0.75rem;
+}
