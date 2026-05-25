@@ -1,0 +1,4 @@
+# Force public npm registry for the site build.
+# Overrides any ~/.npmrc that points to an internal/corporate registry.
+[install]
+registry = "https://registry.npmjs.org/"
