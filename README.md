@@ -1,25 +1,62 @@
 # ctx — Context Engine
 
+[![Crates.io](https://img.shields.io/crates/v/ctx-engine.svg)](https://crates.io/crates/ctx-engine)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://rustup.rs/)
-[![Tests](https://img.shields.io/badge/tests-214%20passing-green.svg)](#desenvolvimento)
+[![Tests](https://img.shields.io/badge/tests-271%20passing-green.svg)](#desenvolvimento)
+[![Release](https://img.shields.io/github/v/release/JaimeJunr/context-engine)](https://github.com/JaimeJunr/context-engine/releases)
 
 > **Maintainers e AI agents:** leia [`CLAUDE.md`](CLAUDE.md) antes de fazer qualquer mudança.
 
-CLI Rust que dá ao seu agente de codificação **mapas curados de repositório**, **busca semântica em docs**, **compressão de output** e **integração via MCP/hooks** — tudo em um único binário 100% local.
+CLI Rust que dá ao seu agente de codificação **mapas curados de repositório**, **busca semântica em docs**, **compressão de output**, **grafo de chamadas em 7 linguagens** e **integração via MCP/hooks** — tudo em um único binário 100% local.
 
-🦀 **Comece aqui:**
-- [Quick Start](docs/guides/quick-start.md) — em 5 minutos, primeiro mapa de repo.
-- [Integração com Agentes](docs/guides/agent-integration.md) — `ctx install --agent claude-code` configura hook + MCP server automaticamente.
-- [Análise de Concorrentes](docs/competitors/) — comparação técnica com RTK, CodeGraph, Context Mode, QMD.
+## Install
 
-**Documentação completa:** [`docs/INDEX.md`](docs/INDEX.md).
+**Sem Rust instalado** — um comando pega o build certo para o seu OS:
 
 ```bash
-cargo build --release
-cp target/release/ctx ~/.local/bin/
-ctx install --agent claude-code   # configura hook + MCP em ~/.claude/settings.json
+# Linux / macOS
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/JaimeJunr/context-engine/releases/latest/download/ctx-engine-installer.sh | sh
+
+# Windows (PowerShell)
+irm https://github.com/JaimeJunr/context-engine/releases/latest/download/ctx-engine-installer.ps1 | iex
 ```
+
+**Já tem Rust?** Use cargo:
+
+```bash
+cargo install ctx-engine
+```
+
+**Configura seu agente** em um comando — escreve hook PreToolUse + MCP server no `~/.claude/settings.json`:
+
+```bash
+ctx install --agent claude-code
+```
+
+Reabra a sessão do Claude Code e o agente passa a usar `ctx` automaticamente para compressão de comandos e consulta de grafo/repo map.
+
+### Desinstalar
+
+```bash
+ctx uninstall --agent claude-code   # remove só o que o ctx instalou (preserva o resto)
+```
+
+### Plataformas suportadas
+
+| OS | Arquitetura |
+|---|---|
+| Linux | x86_64, aarch64 |
+| macOS | x86_64 (Intel), aarch64 (Apple Silicon) |
+| Windows | x86_64 |
+
+📖 **Próximos passos:**
+- [Quick Start](docs/guides/quick-start.md) — em 5 minutos, primeiro mapa de repo
+- [Integração com Agentes](docs/guides/agent-integration.md) — detalhes do hook + MCP
+- [Análise de Concorrentes](docs/competitors/) — comparação técnica vs RTK, CodeGraph, Context Mode, QMD
+
+**Documentação completa:** [`docs/INDEX.md`](docs/INDEX.md).
 
 ## Por que ctx?
 
@@ -109,41 +146,34 @@ src/
 
 Detalhes em [`docs/architecture/modules.md`](docs/architecture/modules.md).
 
-## Linguagens Suportadas (extração de assinaturas)
+## Linguagens Suportadas
 
-| Linguagem | Suporte |
-|-----------|---------|
-| TypeScript / TSX | ✅ Completo |
-| Python | ✅ Completo |
-| Ruby | ✅ Completo |
-| Groovy | ✅ Completo (gramática customizada) |
-| Outras (Go, Rust, Java, C#, …) | 🚧 Roadmap |
+| Linguagem | `ctx map` (assinaturas) | `ctx graph` (callers/callees) |
+|---|:---:|:---:|
+| TypeScript / TSX | ✅ | ✅ |
+| Python | ✅ | ✅ |
+| Ruby | ✅ | ✅ |
+| Groovy | ✅ | — |
+| Go | — | ✅ |
+| Rust | — | ✅ |
+| Java | — | ✅ |
+| C#, PHP, Swift, Kotlin, Scala, Dart, Vue, Svelte, Lua | 🚧 | 🚧 |
 
-## Requisitos
+## Dependência opcional
 
-- **Rust 1.70+** ([instalar](https://rustup.rs/))
-- **Opcional para `ctx catalog`:** endpoint LLM OpenAI-compatible (Ollama local recomendado):
-  ```bash
-  ollama serve
-  ollama pull nomic-embed-text   # embedder padrão
-  ollama pull llama3.2            # reranker padrão
-  ```
-  Sem isso, `ctx search` ainda funciona em modo léxico (sem embeddings).
-
-## Início Rápido
+`ctx catalog` (busca semântica em docs) usa embeddings via endpoint OpenAI-compatible. **Ollama local** é o caminho recomendado:
 
 ```bash
-# Build
-cargo build --release
-cp target/release/ctx ~/.local/bin/
-
-# Configurar integração com agente (escreve hook + MCP em ~/.claude/settings.json)
-ctx install --agent claude-code
-
-# Reabra a sessão do Claude Code e o agente passa a usar ctx automaticamente.
+ollama serve
+ollama pull nomic-embed-text   # embedder padrão
+ollama pull llama3.2            # reranker padrão
 ```
 
-### Exemplo 1: `ctx map`
+Sem Ollama, `ctx search` ainda funciona em modo léxico (sem embeddings).
+
+## Uso
+
+### `ctx map` — repo map curado
 
 ```bash
 ctx map \
@@ -154,7 +184,7 @@ ctx map \
 
 **Opções:** `--max-tokens N`, `--format json`, `--seeds dir1,dir2` (Personalized PageRank), `--top N`.
 
-### Exemplo 2: `ctx catalog`
+### `ctx catalog` — busca semântica em docs
 
 ```bash
 ctx add meu-projeto --source ./docs --include "**/*.md"
@@ -162,7 +192,7 @@ ctx index meu-projeto --with-embed
 ctx search meu-projeto "como funciona o pipeline de dados?"
 ```
 
-### Exemplo 3: `ctx exec`
+### `ctx exec` — compressão de output
 
 ```bash
 ctx exec cargo test          # comprime output de testes
@@ -170,7 +200,17 @@ ctx exec git status          # idem
 ctx exec report              # relatório de tokens economizados
 ```
 
-### Exemplo 4: `ctx mcp`
+### `ctx graph` — grafo de chamadas
+
+```bash
+ctx graph index --dirs src                    # indexa o projeto
+ctx graph callers apply_pipeline              # quem chama esta função?
+ctx graph trace handle_request --depth 3      # cadeia até este símbolo
+ctx graph impact migrate_db                   # o que quebra se eu mudar?
+ctx graph callers run --query "exec proxy" --max-tokens 800   # ranqueado por relevância
+```
+
+### `ctx mcp` — MCP server
 
 ```bash
 ctx mcp tools                # lista tools expostas pelo server
