@@ -57,56 +57,68 @@ Comprime saída de comandos shell (logs, errors, etc) aplicando filtros contextu
 
 ## Estrutura de Código
 
+Estrutura modular em três camadas: `pipelines/` (domínio), `integrations/` (interfaces externas), `shared/` (utilitários cross-cutting).
+
 ```
 src/
-├── main.rs                # Entry point + subcomandos clap: map | catalog | exec
-├── lib.rs                 # Orquestração do pipeline map
-├── config.rs              # Configuração (caminhos, limites, endpoints)
-├── scanner.rs             # Descoberta de arquivos com suporte a .gitignore
-├── cache.rs               # Cache SQLite em ~/.cache/context_engine/ (invalidado por SHA256)
-├── tokenizer.rs           # Tokenização para BM25 (1 token ≈ 4 chars)
-├── output.rs              # Formatação text/JSON da saída
+├── main.rs                       # Entry point + dispatch CLI
+├── lib.rs                        # Thin facade (pub mod das 3 camadas)
 │
-├── extractors/            # Extração de assinaturas de código via Tree-Sitter
-│   ├── mod.rs             # Trait Extractor + dispatch por extensão (.ts, .py, .rb, .groovy)
-│   ├── typescript.rs      # TypeScript/TSX (interfaces, classes, tipos)
-│   ├── python.rs          # Python (classes, funções, tipos)
-│   ├── ruby.rs            # Ruby (classes, métodos, módulos)
-│   └── groovy.rs          # Groovy (sintaxe customizada em grammars/groovy/)
+├── pipelines/                    # LÓGICA DE DOMÍNIO
+│   ├── map/                      # Repository map
+│   │   ├── mod.rs                # run() — orquestração
+│   │   ├── scanner.rs            # Discovery .gitignore-aware
+│   │   ├── extractors/           # Tree-Sitter (.ts, .py, .rb, .groovy)
+│   │   ├── ranking/              # BM25 + PageRank + budget
+│   │   └── output.rs             # Formatação text/json
+│   │
+│   ├── catalog/                  # RAG local (busca semântica)
+│   │   ├── mod.rs, types.rs, store.rs, chunker.rs
+│   │   ├── embedder.rs, indexer.rs, searcher.rs
+│   │   └── reranker.rs, cache_ops.rs
+│   │
+│   └── exec/                     # Compressão de output
+│       ├── mod.rs                # API pública (run_proxy)
+│       ├── pipeline.rs           # 8 estágios de filtragem
+│       ├── registry.rs           # Dispatch comando → filtro
+│       ├── filters/              # Filtros por família (git, cargo, docker…)
+│       └── metrics.rs            # Telemetria de economia
 │
-├── ranking/               # Ranking híbrido de relevância
-│   ├── mod.rs             # Orquestração BM25 + PageRank
-│   ├── bm25.rs            # TF-IDF / BM25 scoring por query
-│   ├── pagerank.rs        # Personalized PageRank no grafo de dependências
-│   └── budget.rs          # Binary search para maximizar arquivos respeitando token budget
+├── integrations/                 # INTERFACES EXTERNAS
+│   └── agents/                   # Hooks Claude Code (futuros Cursor/Codex)
+│       ├── mod.rs                # Trait AgentInstaller
+│       ├── claude_code.rs        # Impl Claude Code
+│       ├── hook_handlers.rs      # Handler de `ctx __hook`
+│       └── settings_merge.rs     # Helpers JSON (idempotente)
 │
-├── catalog/               # RAG Local — busca semântica em documentação
-│   ├── mod.rs             # API pública (add_collection, index, search, health)
-│   ├── types.rs           # Tipos (Collection, SearchResult, CollectionHealth)
-│   ├── store.rs           # Persistência SQLite (colections, docs, chunks, embeddings)
-│   ├── cache_ops.rs       # Operações em cache (read, write, invalidate)
-│   ├── chunker.rs         # Divisão de documentos em chunks semanticamente coerentes
-│   ├── embedder.rs        # Geração de embeddings via endpoint OpenAI-compatible
-│   ├── indexer.rs         # Pipeline (chunking → embedding → persistência)
-│   ├── searcher.rs        # Busca vetorial por similaridade
-│   └── reranker.rs        # Re-ranking contextual dos resultados
-│
-└── exec/                  # Compressão inteligente de output
-    ├── mod.rs             # API pública (compress)
-    ├── pipeline.rs        # 8 estágios de filtragem (summarize, truncate, etc)
-    ├── types.rs           # Configuração de filtros
-    └── metrics.rs         # Tracking de economia de tokens
+└── shared/                       # UTILITÁRIOS CROSS-CUTTING
+    ├── cache.rs                  # SQLite ~/.cache/context_engine/
+    ├── config.rs                 # ~/.ctx/config.toml
+    ├── tokenizer.rs              # 1 token ≈ 4 chars
+    └── workspace.rs              # Stack detection + .ctx/config.toml
 ```
+
+### Regras de dependência (não-circular)
+
+```
+shared        ← independente
+pipelines/*   ← pode importar shared
+integrations  ← pode importar pipelines + shared
+pipelines     ← NÃO importa integrations
+```
+
+Ver [docs/architecture/modules.md](docs/architecture/modules.md) para detalhes e [docs/architecture/extending.md](docs/architecture/extending.md) para onde adicionar features novas.
 
 ## Padrões-Chave
 
 | Padrão | Onde | Detalhes |
 |--------|------|----------|
-| **Paralelismo** | `scanner.rs`, `extractors/` | Via `rayon` — scan e parsing em multi-thread |
-| **Cache** | `cache.rs` | SQLite em `~/.cache/context_engine/` — invalidado por SHA256 do arquivo |
-| **Token Budget** | `ranking/budget.rs` | Binary search para maximizar arquivos respeitando limite (1 token ≈ 4 chars) |
+| **Paralelismo** | `pipelines/map/scanner.rs`, `pipelines/map/extractors/` | Via `rayon` — scan e parsing em multi-thread |
+| **Cache** | `shared/cache.rs` | SQLite em `~/.cache/context_engine/` — invalidado por SHA256 do arquivo |
+| **Token Budget** | `pipelines/map/ranking/budget.rs` | Binary search para maximizar arquivos respeitando limite (1 token ≈ 4 chars) |
 | **Gramática customizada** | `build.rs`, `grammars/groovy/` | Groovy usa gramática compilada (não há Tree-Sitter oficial) |
-| **LLM Endpoint** | `catalog/embedder.rs` | Configurável — suporta OpenAI-compatible (ex: Ollama local) |
+| **LLM Endpoint** | `pipelines/catalog/embedder.rs` | Configurável — suporta OpenAI-compatible (ex: Ollama local) |
+| **Hooks agente** | `integrations/agents/` | `ctx install --agent claude-code` injeta PreToolUse hook redirecionando comandos cobertos para `ctx exec` |
 | **Immutability** | Todos os módulos | Preferir criar novos objetos a mutar; patterns como builder, copy-on-write |
 
 ## Documentação do Projeto
@@ -124,30 +136,37 @@ A documentação principal está em **`docs/INDEX.md`**. Consulte quando:
 | Arquivo | Propósito | Quando Usar |
 |---------|----------|-----------|
 | `src/main.rs` | Subcomandos CLI (clap) | Adicionar novo comando ou mudar interface |
-| `src/lib.rs` | Orquestração do pipeline `map` | Entender fluxo: Scanner → Extractor → Ranker |
-| `src/catalog/mod.rs` | API pública do `catalog` | Novos métodos ou mudanças na busca semântica |
-| `src/exec/mod.rs` | API pública do `exec` | Novas estratégias de compressão |
+| `src/lib.rs` | Thin facade (pub mod) | Raramente — só re-exports |
+| `src/pipelines/map/mod.rs` | `run()` do pipeline map | Entender Scanner → Extractor → Ranker |
+| `src/pipelines/catalog/mod.rs` | API pública do catalog | Estender busca semântica |
+| `src/pipelines/exec/mod.rs` | API pública do exec | Novas estratégias de compressão |
+| `src/integrations/agents/mod.rs` | Trait AgentInstaller | Adicionar novo agente (Cursor, Codex, …) |
 
 ### Fluxos Principais
 
 **Para adicionar uma linguagem:**
-1. Criar `src/extractors/<lang>.rs` implementando trait `Extractor`
-2. Registrar dispatch em `src/extractors/mod.rs`
+1. Criar `src/pipelines/map/extractors/<lang>.rs` implementando trait `Extractor`
+2. Registrar dispatch em `src/pipelines/map/extractors/mod.rs`
 3. Testar em `tests/integration.rs`
 4. Atualizar `docs/architecture/extending.md` se necessário
 
 **Para estender busca semântica:**
-1. Editar `src/catalog/mod.rs` (nova API pública)
-2. Implementar em `src/catalog/searcher.rs` ou `reranker.rs`
-3. Testar com `cargo test catalog::`
-4. Atualizar `docs/search/` (specification.md ou implementation.md)
+1. Editar `src/pipelines/catalog/mod.rs` (nova API pública)
+2. Implementar em `src/pipelines/catalog/searcher.rs` ou `reranker.rs`
+3. Testar com `cargo test pipelines::catalog::`
+4. Atualizar `docs/search/`
 
 **Para adicionar filtro de compressão:**
-1. Editar `src/exec/types.rs` (configuração)
-2. Implementar em `src/exec/pipeline.rs` (estágio)
-3. Adicionar métricas em `src/exec/metrics.rs`
-4. Testar com `cargo test exec::`
-5. Atualizar `docs/exec/` se necessário
+1. Editar `src/pipelines/exec/types.rs` (configuração)
+2. Implementar em `src/pipelines/exec/filters/<família>.rs`
+3. Registrar em `src/pipelines/exec/registry.rs`
+4. Testar com `cargo test pipelines::exec::`
+5. Atualizar `docs/exec/`
+
+**Para integrar com um novo agente:**
+1. Criar `src/integrations/agents/<agente>.rs` implementando `AgentInstaller`
+2. Adicionar variante em `AgentName` enum
+3. Testes em `tests/agent_install.rs`
 
 ## Debugging
 
@@ -173,9 +192,11 @@ cargo run -- map --dirs . --no-cache
 cargo test
 
 # Por módulo
-cargo test ranking::           # Testes de ranking
-cargo test extractors::        # Testes de extractors
-cargo test catalog::           # Testes de busca semântica
+cargo test pipelines::map::ranking::     # Testes de ranking
+cargo test pipelines::map::extractors::  # Testes de extractors
+cargo test pipelines::catalog::          # Testes de busca semântica
+cargo test pipelines::exec::             # Testes de exec
+cargo test integrations::agents::        # Testes de hooks de agente
 
 # Com output
 cargo test -- --nocapture
@@ -183,18 +204,7 @@ cargo test -- --nocapture
 
 ## Estendendo o Projeto
 
-### Adicionar Suporte a Linguagem
-1. Criar novo arquivo em `src/extractors/<lang>.rs`
-2. Implementar trait `Extractor` (ver `src/extractors/mod.rs`)
-3. Testar em `tests/integration.rs`
-4. Registrar em dispatch em `src/extractors/mod.rs`
-
-### Estender `catalog`
-1. Novos comandos: editar `src/main.rs` (clap) + `src/catalog/mod.rs` (API)
-2. Novos filtros: editar `src/exec/pipeline.rs`
-3. Novas estratégias de re-ranking: criar em `src/catalog/reranker.rs`
-
-Referência: `docs/architecture/extending.md`
+Ver [docs/architecture/extending.md](docs/architecture/extending.md) — fluxos completos para adicionar linguagens, agentes, filtros de exec e novas integrações.
 
 ## Documentação
 

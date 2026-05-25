@@ -19,6 +19,10 @@ tree-sitter = "0.24"
 tree-sitter-ruby = "0.23"
 tree-sitter-python = "0.23"
 tree-sitter-typescript = "0.23"
+tree-sitter-go = "0.23"
+tree-sitter-rust = "0.23"
+tree-sitter-java = "0.23"
+streaming-iterator = "0.1"
 rusqlite = { version = "0.31", features = ["bundled"] }
 ignore = "0.4"
 sha2 = "0.10"
@@ -34,6 +38,9 @@ reqwest = { version = "0.12", features = ["json", "blocking"] }
 tokio = { version = "1", features = ["full"] }
 glob = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
+shell-words = "1.1"
+rmcp = { version = "1.7", features = ["server", "macros", "transport-io"] }
+schemars = "1.0"
 
 [dev-dependencies]
 serde_json = "1.0"

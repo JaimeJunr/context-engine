@@ -439,7 +439,7 @@ fn test_catalog_cleanup_removes_deleted_files() {
 
 #[test]
 fn bootstrap_descobre_apenas_arquivos_md_e_ignora_rs() {
-    use context_engine::catalog;
+    use context_engine::pipelines::catalog;
     use std::io::Write;
 
     let temp_base = PathBuf::from(format!(

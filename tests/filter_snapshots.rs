@@ -1,8 +1,8 @@
 // Testes comportamentais dos filtros exec — verificam que informação crítica é preservada
 // e ruído é removido, sem dependência de crates externos de snapshot.
 
-use context_engine::exec::pipeline::apply_pipeline;
-use context_engine::exec::registry::lookup;
+use context_engine::pipelines::exec::pipeline::apply_pipeline;
+use context_engine::pipelines::exec::registry::lookup;
 
 // =========================================================================
 // cargo test: falha visível, linhas de compilação removidas

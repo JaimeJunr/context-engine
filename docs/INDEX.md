@@ -68,6 +68,7 @@ Comprime output de comandos shell mantendo essencial, economizando tokens.
 
 - **[Visão do Produto](guides/vision.md)** — Por que existe, status, roadmap
 - **[Roadmap](guides/roadmap.md)** — Próximas features
+- **[Integração com Agentes](guides/agent-integration.md)** — `ctx install` / `ctx uninstall` (hooks Claude Code)
 - **[Troubleshooting](guides/troubleshooting.md)** — Problemas comuns e soluções
 
 ---
@@ -128,7 +129,8 @@ docs/
 | **Usar `ctx exec`** | [exec/overview.md](exec/overview.md) | [exec/configuration.md](exec/configuration.md) |
 | **Entender projeto** | [guides/vision.md](guides/vision.md) | [architecture/README.md](architecture/README.md) |
 | **Implementar feature** | [architecture/design-patterns.md](architecture/design-patterns.md) | Código + testes |
-| **Adicionar linguagem** | [architecture/extending.md](architecture/extending.md) | `src/extractors/<lang>.rs` |
+| **Adicionar linguagem** | [architecture/extending.md](architecture/extending.md) | `src/pipelines/map/extractors/<lang>.rs` |
+| **Integrar com agente** | [guides/agent-integration.md](guides/agent-integration.md) | `src/integrations/agents/<agente>.rs` |
 | **Troubleshoot** | [guides/troubleshooting.md](guides/troubleshooting.md) | Logs com `RUST_LOG` |
 | **Pesquisa técnica** | [research/README.md](research/README.md) | PRs no git |
 

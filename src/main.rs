@@ -1,7 +1,9 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use context_engine::catalog::types::Collection;
-use context_engine::{cache, catalog, run};
+use context_engine::integrations::agents::{installer_for, AgentName, Scope};
+use context_engine::pipelines::catalog::{self, types::Collection};
+use context_engine::pipelines::map::run;
+use context_engine::shared::cache;
 
 #[derive(Parser)]
 #[command(
@@ -157,6 +159,107 @@ enum Commands {
         #[command(subcommand)]
         cmd: ExecCommand,
     },
+
+    /// Instala integração (hooks) em um agente de codificação
+    Install {
+        /// Agente alvo (ex: claude-code)
+        #[arg(long, value_enum)]
+        agent: AgentName,
+        /// Instala no projeto atual (.claude/) em vez do escopo de usuário (~/.claude/)
+        #[arg(long)]
+        project: bool,
+        /// Sobrescreve configuração existente sem perguntar
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Remove a integração instalada por `ctx install` em um agente
+    Uninstall {
+        /// Agente alvo
+        #[arg(long, value_enum)]
+        agent: AgentName,
+        /// Remove do projeto atual em vez do escopo de usuário
+        #[arg(long)]
+        project: bool,
+    },
+
+    /// Handler interno de hook (não invocar manualmente)
+    #[command(name = "__hook", hide = true)]
+    Hook {
+        /// Nome do hook (ex: claude-code-pre-tool-use)
+        name: String,
+    },
+
+    /// MCP server (Model Context Protocol)
+    Mcp {
+        #[command(subcommand)]
+        cmd: McpCommand,
+    },
+
+    /// Grafo de símbolos (callers/callees/trace/impact/node)
+    Graph {
+        #[command(subcommand)]
+        cmd: GraphCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum GraphCommand {
+    /// Indexa diretórios populando o grafo
+    Index {
+        /// Diretórios alvo separados por vírgula
+        #[arg(long, default_value = ".")]
+        dirs: String,
+        /// Profundidade máxima de scan (default: 15)
+        #[arg(long, default_value_t = 15)]
+        max_depth: usize,
+    },
+    /// Quem chama o símbolo?
+    Callers {
+        /// Nome do símbolo
+        name: String,
+        /// Query para ranquear resultados
+        #[arg(long)]
+        query: Option<String>,
+        /// Budget de tokens
+        #[arg(long = "max-tokens")]
+        max_tokens: Option<usize>,
+    },
+    /// O que esta função chama?
+    Callees {
+        /// Identificador qualificado (file::name)
+        qualified: String,
+        #[arg(long)]
+        query: Option<String>,
+        #[arg(long = "max-tokens")]
+        max_tokens: Option<usize>,
+    },
+    /// Cadeia de callers até este símbolo
+    Trace {
+        name: String,
+        #[arg(long, default_value_t = 3)]
+        depth: usize,
+        #[arg(long)]
+        query: Option<String>,
+        #[arg(long = "max-tokens")]
+        max_tokens: Option<usize>,
+    },
+    /// O que quebra se eu mudar este símbolo?
+    Impact {
+        name: String,
+        #[arg(long, default_value_t = 2)]
+        depth: usize,
+    },
+    /// Detalhes de um símbolo (onde está definido)
+    Node { name: String },
+}
+
+#[derive(Subcommand)]
+enum McpCommand {
+    /// Sobe o MCP server em stdio (long-running)
+    Serve,
+    /// Lista as tools expostas pelo MCP server
+    Tools,
 }
 
 #[derive(Subcommand)]
@@ -363,11 +466,11 @@ fn execute(cli: Cli) -> Result<()> {
         }
 
         Commands::Setup => {
-            context_engine::config::run_init_wizard()?;
+            context_engine::shared::config::run_init_wizard()?;
         }
 
         Commands::WorkspaceInit { path, force } => {
-            match context_engine::init::run_workspace_init(&path, force) {
+            match context_engine::shared::workspace::run_workspace_init(&path, force) {
                 Ok(report) => println!("{}", report),
                 Err(e) => {
                     eprintln!("erro: {}", e);
@@ -377,19 +480,21 @@ fn execute(cli: Cli) -> Result<()> {
         }
 
         Commands::Config { cmd } => {
-            let mut cfg = context_engine::config::load()?;
+            let mut cfg = context_engine::shared::config::load()?;
             match cmd {
                 ConfigCmd::Set { key, value } => {
-                    context_engine::config::set_key(&mut cfg, &key, &value)?;
-                    context_engine::config::save(&cfg)?;
+                    context_engine::shared::config::set_key(&mut cfg, &key, &value)?;
+                    context_engine::shared::config::save(&cfg)?;
                     println!("{} = {}", key, value);
                 }
-                ConfigCmd::Get { key } => match context_engine::config::get_key(&cfg, &key)? {
-                    Some(v) => println!("{}", v),
-                    None => println!("(não definido)"),
-                },
+                ConfigCmd::Get { key } => {
+                    match context_engine::shared::config::get_key(&cfg, &key)? {
+                        Some(v) => println!("{}", v),
+                        None => println!("(não definido)"),
+                    }
+                }
                 ConfigCmd::List => {
-                    let path = context_engine::config::config_path();
+                    let path = context_engine::shared::config::config_path();
                     println!("Config: {}\n", path.display());
                     println!(
                         "llm.endpoint = {}",
@@ -429,7 +534,7 @@ fn execute(cli: Cli) -> Result<()> {
                 project,
                 days,
             } => {
-                use context_engine::exec::metrics;
+                use context_engine::pipelines::exec::metrics;
                 use dirs::home_dir;
                 use rusqlite::Connection;
 
@@ -465,9 +570,160 @@ fn execute(cli: Cli) -> Result<()> {
                 }
             }
             ExecCommand::Run(argv) => {
-                use context_engine::exec::run_proxy;
+                use context_engine::pipelines::exec::run_proxy;
                 let exit_code = run_proxy(argv)?;
                 std::process::exit(exit_code);
+            }
+        },
+
+        Commands::Install {
+            agent,
+            project,
+            force,
+        } => {
+            let scope = if project { Scope::Project } else { Scope::User };
+            let installer = installer_for(agent);
+            let report = installer.install(scope, force)?;
+            if report.already_installed {
+                println!(
+                    "{} já estava instalado em {}",
+                    installer.name(),
+                    report.settings_path.display()
+                );
+            } else {
+                println!(
+                    "{} instalado em {}",
+                    installer.name(),
+                    report.settings_path.display()
+                );
+                println!("Reinicie sessões abertas do agente para o hook entrar em vigor.");
+            }
+        }
+
+        Commands::Uninstall { agent, project } => {
+            let scope = if project { Scope::Project } else { Scope::User };
+            let installer = installer_for(agent);
+            let report = installer.uninstall(scope)?;
+            if report.removed {
+                println!(
+                    "{} removido de {}",
+                    installer.name(),
+                    report.settings_path.display()
+                );
+            } else {
+                println!(
+                    "Nenhuma instalação do {} encontrada em {}",
+                    installer.name(),
+                    report.settings_path.display()
+                );
+            }
+        }
+
+        Commands::Hook { name } => {
+            context_engine::integrations::agents::hook_handlers::dispatch(&name)?;
+        }
+
+        Commands::Graph { cmd } => {
+            use context_engine::pipelines::graph::{self, QueryOptions};
+            match cmd {
+                GraphCommand::Index { dirs, max_depth } => {
+                    let dirs: Vec<String> = dirs
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    let stats = graph::index(&dirs, max_depth)?;
+                    println!(
+                        "{} arquivos varridos, {} indexados, {} símbolos, {} calls, {} erros",
+                        stats.files_scanned,
+                        stats.files_indexed,
+                        stats.symbols,
+                        stats.calls,
+                        stats.errors
+                    );
+                }
+                GraphCommand::Callers {
+                    name,
+                    query,
+                    max_tokens,
+                } => {
+                    let conn = graph::store::open_default()?;
+                    let result = graph::callers(
+                        &conn,
+                        &name,
+                        &QueryOptions {
+                            query,
+                            max_tokens,
+                            depth: None,
+                        },
+                    )?;
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                }
+                GraphCommand::Callees {
+                    qualified,
+                    query,
+                    max_tokens,
+                } => {
+                    let conn = graph::store::open_default()?;
+                    let result = graph::callees(
+                        &conn,
+                        &qualified,
+                        &QueryOptions {
+                            query,
+                            max_tokens,
+                            depth: None,
+                        },
+                    )?;
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                }
+                GraphCommand::Trace {
+                    name,
+                    depth,
+                    query,
+                    max_tokens,
+                } => {
+                    let conn = graph::store::open_default()?;
+                    let result = graph::trace(
+                        &conn,
+                        &name,
+                        &QueryOptions {
+                            query,
+                            max_tokens,
+                            depth: Some(depth),
+                        },
+                    )?;
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                }
+                GraphCommand::Impact { name, depth } => {
+                    let conn = graph::store::open_default()?;
+                    let result = graph::impact(
+                        &conn,
+                        &name,
+                        &QueryOptions {
+                            depth: Some(depth),
+                            ..Default::default()
+                        },
+                    )?;
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                }
+                GraphCommand::Node { name } => {
+                    let conn = graph::store::open_default()?;
+                    let nodes = graph::node(&conn, &name)?;
+                    println!("{}", serde_json::to_string_pretty(&nodes)?);
+                }
+            }
+        }
+
+        Commands::Mcp { cmd } => match cmd {
+            McpCommand::Serve => {
+                let rt = tokio::runtime::Runtime::new()?;
+                rt.block_on(context_engine::integrations::mcp::serve())?;
+            }
+            McpCommand::Tools => {
+                println!("Tools expostas pelo MCP server:");
+                for name in context_engine::integrations::mcp::tool_names() {
+                    println!("  {}", name);
+                }
             }
         },
     }
