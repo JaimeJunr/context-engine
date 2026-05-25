@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ClaudeDesktopInstaller` (`src/integrations/agents/claude_desktop.rs`) — instala MCP server `ctx` no app Claude Desktop. Diferencial vs concorrentes: zero deles (RTK, CodeGraph, Context Mode, QMD) tem installer automático para Desktop; QMD chega mais perto com snippet manual macOS-only
+- CLI `ctx install --agent claude-desktop` + `ctx uninstall --agent claude-desktop`
+- Path resolution cross-platform via `dirs::config_dir()`:
+  - Linux: `~/.config/Claude/claude_desktop_config.json`
+  - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+- 5 testes de integração novos cobrindo install/uninstall/preservação de preferences/idempotência/detecção de app ausente
+
+### Changed
+
+- `AgentName` enum agora tem variante `ClaudeDesktop` (CLI: `--agent claude-desktop`)
+- `installer_for()` despacha para `ClaudeDesktopInstaller`
+
+### Notes
+
+- Claude Desktop não suporta hooks `PreToolUse` (só MCP servers), por isso o installer escreve apenas o bloco `mcpServers`
+- Uninstall preserva o arquivo quando ele ainda tem `preferences` do usuário (diferente do Claude Code installer que apaga arquivos que ficam vazios)
+
 ## [0.1.0] - 2026-05-25
 
 Primeiro release oficial. Consolida 4 pipelines de domínio (`map`, `catalog`, `exec`, `graph`), camada de integrações (hook PreToolUse + MCP server), e cobertura inicial de 7 linguagens. Trabalho construído iterativamente a partir das análises competitivas de RTK, CodeGraph, Context Mode e QMD em [`docs/competitors/`](docs/competitors/).
