@@ -86,7 +86,7 @@ Push da tag dispara:
 - [`release.yml`](../.github/workflows/release.yml): builda binários para Linux x86_64/aarch64, macOS x86_64/aarch64, Windows x86_64; cria GitHub Release com installers shell/powershell.
 - [`publish-crates.yml`](../.github/workflows/publish-crates.yml): roda `cargo publish` (precisa do secret `CARGO_REGISTRY_TOKEN`).
 
-Acompanhe em: `https://github.com/JaimeJunr/context-mode/actions`
+Acompanhe em: `https://github.com/JaimeJunr/context-engine/actions`
 
 ### 5. Validar release
 
@@ -99,10 +99,10 @@ Acompanhe em: `https://github.com/JaimeJunr/context-mode/actions`
 
 ```bash
 # Curl (Linux/macOS)
-curl -fsSL https://github.com/JaimeJunr/context-mode/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/JaimeJunr/context-engine/releases/latest/download/install.sh | sh
 
 # PowerShell (Windows)
-irm https://github.com/JaimeJunr/context-mode/releases/latest/download/install.ps1 | iex
+irm https://github.com/JaimeJunr/context-engine/releases/latest/download/install.ps1 | iex
 
 # Cargo
 cargo install context-engine

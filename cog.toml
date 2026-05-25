@@ -38,5 +38,5 @@ style = { changelog_title = "Style" }
 authors = []
 template = "remote"
 remote = "github.com"
-repository = "context-mode"
+repository = "context-engine"
 owner = "JaimeJunr"

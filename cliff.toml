@@ -30,7 +30,7 @@ body = """
 """
 trim = true
 footer = """
-[unreleased]: https://github.com/JaimeJunr/context-mode/compare/{{ latest_tag }}...HEAD
+[unreleased]: https://github.com/JaimeJunr/context-engine/compare/{{ latest_tag }}...HEAD
 """
 
 [git]
