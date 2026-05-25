@@ -96,5 +96,5 @@ Primeiro release oficial. Consolida 4 pipelines de domínio (`map`, `catalog`, `
 - `tests/agent_install.rs` — ciclo install→hook→uninstall com `HOME` temporário
 - Cobertura nova em `dedup`, `git filters`, `aws filters`, `terraform`, `ts/python/go/ruby linters`, `graph::{store,query,extractor}`
 
-[Unreleased]: https://github.com/JaimeJunr/context-engine/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/JaimeJunr/context-engine/releases/tag/v0.1.0
+[Unreleased]: https://github.com/JaimeJunr/ctx-engine/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/JaimeJunr/ctx-engine/releases/tag/v0.1.0

@@ -1,5 +1,5 @@
 [package]
-name = "context-engine"
+name = "ctx-engine"
 version = "0.1.0"
 edition = "2021"
 default-run = "ctx"
@@ -70,19 +70,21 @@ codegen-units = 1
 inherits = "release"
 lto = "thin"
 
-# Configuração do cargo-dist (https://opensource.axo.dev/cargo-dist/).
-# Gera binários cross-platform e instaladores curl/powershell em GitHub Releases.
+# Config for 'dist'
 [workspace.metadata.dist]
+# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
 cargo-dist-version = "0.28.0"
+# CI backends to support
 ci = "github"
+# The installers to generate for each app
 installers = ["shell", "powershell"]
-targets = [
-    "x86_64-unknown-linux-gnu",
-    "aarch64-unknown-linux-gnu",
-    "x86_64-apple-darwin",
-    "aarch64-apple-darwin",
-    "x86_64-pc-windows-msvc",
-]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# Which actions to run on pull requests
 pr-run-mode = "plan"
 # Profile de release usado.
 dist-profile = "dist"
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Whether to install an updater program
+install-updater = false

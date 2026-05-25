@@ -86,26 +86,26 @@ Push da tag dispara:
 - [`release.yml`](../.github/workflows/release.yml): builda binários para Linux x86_64/aarch64, macOS x86_64/aarch64, Windows x86_64; cria GitHub Release com installers shell/powershell.
 - [`publish-crates.yml`](../.github/workflows/publish-crates.yml): roda `cargo publish` (precisa do secret `CARGO_REGISTRY_TOKEN`).
 
-Acompanhe em: `https://github.com/JaimeJunr/context-engine/actions`
+Acompanhe em: `https://github.com/JaimeJunr/ctx-engine/actions`
 
 ### 5. Validar release
 
 - GitHub Release deve aparecer em `releases/tag/vX.Y.Z` com:
   - Body = changelog do release
   - Assets = `.tar.gz` por plataforma + `install.sh`/`install.ps1`
-- crates.io deve ter `context-engine vX.Y.Z`: `cargo search context-engine`
+- crates.io deve ter `ctx-engine vX.Y.Z`: `cargo search ctx-engine`
 
 ## Instalação para usuários
 
 ```bash
 # Curl (Linux/macOS)
-curl -fsSL https://github.com/JaimeJunr/context-engine/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/JaimeJunr/ctx-engine/releases/latest/download/install.sh | sh
 
 # PowerShell (Windows)
-irm https://github.com/JaimeJunr/context-engine/releases/latest/download/install.ps1 | iex
+irm https://github.com/JaimeJunr/ctx-engine/releases/latest/download/install.ps1 | iex
 
 # Cargo
-cargo install context-engine
+cargo install ctx-engine
 ```
 
 ## Hotfix
