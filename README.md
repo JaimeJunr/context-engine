@@ -151,16 +151,17 @@ Detalhes em [`docs/architecture/modules.md`](docs/architecture/modules.md).
 
 ## Linguagens Suportadas
 
-| Linguagem | `ctx map` (assinaturas) | `ctx graph` (callers/callees) |
-|---|:---:|:---:|
-| TypeScript / TSX | ✅ | ✅ |
-| Python | ✅ | ✅ |
-| Ruby | ✅ | ✅ |
-| Groovy | ✅ | — |
-| Go | — | ✅ |
-| Rust | — | ✅ |
-| Java | — | ✅ |
-| C#, PHP, Swift, Kotlin, Scala, Dart, Vue, Svelte, Lua | 🚧 | 🚧 |
+| Linguagem | `ctx map` (assinaturas) | `ctx graph` (callers/callees) | Framework router |
+|---|:---:|:---:|:---:|
+| TypeScript / TSX | ✅ | ✅ | **NestJS** ✅ |
+| JavaScript / JSX | ✅ | ✅ | — |
+| Python | ✅ | ✅ | 🚧 |
+| Ruby | ✅ | ✅ | **Rails** ✅ |
+| Groovy | ✅ | ✅ | **Grails** ✅ |
+| Rust | ✅ | ✅ | 🚧 |
+| Java | ✅ | ✅ | 🚧 (Spring planejado) |
+| Go | — | ✅ | 🚧 (Gin/chi/mux planejados) |
+| C#, PHP, Swift, Kotlin, Scala, Dart, Vue, Svelte, Lua | 🚧 | 🚧 | 🚧 |
 
 ## Dependência opcional
 

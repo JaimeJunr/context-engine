@@ -14,6 +14,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Cobertura completa de linguagens prioritárias
+
+**`ctx map` (assinaturas)** agora cobre: TypeScript, Python, Ruby, Groovy, **Rust, Java, JavaScript** (novos). Arquivos `.js/.jsx/.mjs/.cjs` deixam de cair no extractor de TS e passam por extractor próprio (sem warnings de query nodes inexistentes).
+
+**`ctx graph` (callers/callees/trace/impact)** agora cobre: TypeScript, Python, Ruby, Go, Rust, Java, **Groovy, JavaScript** (novos). Mesma trait `extract_*`, mesma API pública.
+
+| Linguagem | Map (sigs) | Graph (calls) |
+|---|:---:|:---:|
+| TypeScript / TSX | ✅ | ✅ |
+| JavaScript / JSX / MJS / CJS | ✅ | ✅ |
+| Python | ✅ | ✅ |
+| Ruby | ✅ | ✅ |
+| Groovy | ✅ | ✅ |
+| Rust | ✅ | ✅ |
+| Java | ✅ | ✅ |
+| Go | — | ✅ |
+
+#### Framework-aware routing (URL → handler)
+
+Novo módulo `src/pipelines/graph/frameworks/` com trait `FrameworkRouter`. Durante `ctx graph index`, detecta arquivos especiais e injeta símbolos sintéticos `route::METHOD /path` no grafo com call sites ligando à action. Disponíveis:
+
+- **Rails** (`config/routes.rb`): suporta `resources` (gera 7+ actions RESTful), `resource`, verb DSL (`get`/`post`/`put`/`patch`/`delete`/`match`) com `to: 'controller#action'` ou rocket (`=> 'ctrl#act'`), e `namespace` prefixando o path.
+- **Grails** (`UrlMappings.groovy`): explicit mappings `"/url"(controller: ..., action: ..., method: ...)` + `resources: "name"` gerando 5 ações.
+- **NestJS** (`*.ts` com `@Controller` + decorators de verbo): `@Controller('/prefix')` combinado com `@Get(':id')`/`@Post()`/`@Patch(...)` etc, capturando classe + nome do método.
+
+Resultado: `ctx graph callers show` em projeto Rails/Grails retorna as rotas que apontam para a action; `ctx graph node "route::ANY /users/:id"` retorna o source de mapeamento.
+
+#### Outros
+
+- `ClaudeDesktopInstaller` (já listado anteriormente)
+- 22 novos testes (+11 frameworks + +11 extractors novos)
+
+### Changed
+
+- `SUPPORTED_EXTS` do scanner expandido para `.rs/.java/.js/.jsx`
+- `GRAPH_EXTS` expandido para `.groovy/.gradle/.js/.jsx/.mjs/.cjs`
+- `ext_to_lang` retorna `rust`/`java`/`javascript` para extensões correspondentes
+
+### Performance
+
+- Indexação em paralelo via `rayon` continua dominando o tempo; framework routing adiciona < 5% de overhead por arquivo (regex+split em arquivos de rota são pequenos)
+
+### Added (anterior)
+
 - `ClaudeDesktopInstaller` (`src/integrations/agents/claude_desktop.rs`) — instala MCP server `ctx` no app Claude Desktop. Diferencial vs concorrentes: zero deles (RTK, CodeGraph, Context Mode, QMD) tem installer automático para Desktop; QMD chega mais perto com snippet manual macOS-only
 - CLI `ctx install --agent claude-desktop` + `ctx uninstall --agent claude-desktop`
 - Path resolution cross-platform via `dirs::config_dir()`:

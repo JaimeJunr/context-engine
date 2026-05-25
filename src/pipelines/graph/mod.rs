@@ -14,6 +14,7 @@
 // são deduplicados.
 
 pub mod extractor;
+pub mod frameworks;
 pub mod query;
 pub mod store;
 pub mod types;
@@ -39,7 +40,10 @@ pub struct IndexStats {
 /// Reusa o `scanner` do pipeline map para descobrir arquivos respeitando `.gitignore`.
 /// Cada arquivo é re-indexado idempotente (`clear_file` + insert).
 /// Extensões cobertas pelo pipeline graph (superset do map).
-pub const GRAPH_EXTS: &[&str] = &[".rs", ".go", ".java", ".ts", ".tsx", ".py", ".rb", ".rake"];
+pub const GRAPH_EXTS: &[&str] = &[
+    ".rs", ".go", ".java", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".rb", ".rake",
+    ".groovy", ".gradle",
+];
 
 pub fn index(dirs: &[String], max_depth: usize) -> Result<IndexStats> {
     let files = crate::pipelines::map::scanner::scan_files_with_exts(dirs, max_depth, GRAPH_EXTS);
@@ -77,6 +81,19 @@ pub fn index(dirs: &[String], max_depth: usize) -> Result<IndexStats> {
                     store::insert_import(&conn, &file, module, alias.as_deref())?;
                 }
                 stats.files_indexed += 1;
+
+                // Framework-aware routing: detecta endpoints HTTP no arquivo e
+                // injeta símbolos sintéticos `route::METHOD /path` + call site
+                // ligando à action correspondente.
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    for (mapping, language) in frameworks::detect_routes(&path, &content) {
+                        let (sym, call) = mapping.into_graph_entries(language);
+                        store::insert_symbol(&conn, &sym)?;
+                        store::insert_call(&conn, &call)?;
+                        stats.symbols += 1;
+                        stats.calls += 1;
+                    }
+                }
             }
             Err(_) => {
                 stats.errors += 1;

@@ -32,6 +32,7 @@ tree-sitter-typescript = "0.23"
 tree-sitter-go = "0.23"
 tree-sitter-rust = "0.23"
 tree-sitter-java = "0.23"
+tree-sitter-javascript = "0.23"
 streaming-iterator = "0.1"
 rusqlite = { version = "0.31", features = ["bundled"] }
 ignore = "0.4"
