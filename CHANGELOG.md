@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> 🎯 **Meta da v0.2.0:** zerar gap funcional vs CodeGraph. Ver [v0.2-roadmap.md](docs/v0.2-roadmap.md) com auditoria completa + plano por fase (~12k LOC total).
+
 ### Added
 
 - `ClaudeDesktopInstaller` (`src/integrations/agents/claude_desktop.rs`) — instala MCP server `ctx` no app Claude Desktop. Diferencial vs concorrentes: zero deles (RTK, CodeGraph, Context Mode, QMD) tem installer automático para Desktop; QMD chega mais perto com snippet manual macOS-only
