@@ -1,6 +1,6 @@
 [package]
 name = "ctx-engine"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 default-run = "ctx"
 description = "All-in-one Rust toolkit for Claude Code & MCP agents: auto-rewrite hooks, MCP server, repo maps with BM25+PageRank, call graphs in 7 languages, local RAG search. Single binary, 100% local."

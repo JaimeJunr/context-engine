@@ -10,71 +10,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> 🎯 **Meta da v0.2.0:** zerar gap funcional vs CodeGraph. Ver [v0.2-roadmap.md](docs/v0.2-roadmap.md) com auditoria completa + plano por fase (~12k LOC total).
+> Próximas fases v0.3.0+: ver [docs/v0.2-roadmap.md](docs/v0.2-roadmap.md) — file watcher, FTS5, dispatch dinâmico, mais frameworks (Spring/Django/Express), session continuity.
+
+## [0.2.0] - 2026-05-25
+
+Foco: **paridade total nas 5 linguagens prioritárias (Java, Groovy, Ruby, Rust, JS/TS) + framework-aware routing** para Grails, Rails e NestJS. Primeiro passo formal do roadmap para fechar gap competitivo vs CodeGraph.
 
 ### Added
 
-#### Cobertura completa de linguagens prioritárias
+#### Cobertura completa das linguagens prioritárias
 
-**`ctx map` (assinaturas)** agora cobre: TypeScript, Python, Ruby, Groovy, **Rust, Java, JavaScript** (novos). Arquivos `.js/.jsx/.mjs/.cjs` deixam de cair no extractor de TS e passam por extractor próprio (sem warnings de query nodes inexistentes).
+`ctx map` agora extrai assinaturas em **7 linguagens** (3 novas: **Rust, Java, JavaScript**); `ctx graph` agora extrai calls/refs em **8 linguagens** (2 novas: **Groovy, JavaScript**). JavaScript ganhou extractor próprio em ambos os pipelines, separado do TypeScript.
 
-**`ctx graph` (callers/callees/trace/impact)** agora cobre: TypeScript, Python, Ruby, Go, Rust, Java, **Groovy, JavaScript** (novos). Mesma trait `extract_*`, mesma API pública.
-
-| Linguagem | Map (sigs) | Graph (calls) |
-|---|:---:|:---:|
-| TypeScript / TSX | ✅ | ✅ |
-| JavaScript / JSX / MJS / CJS | ✅ | ✅ |
-| Python | ✅ | ✅ |
-| Ruby | ✅ | ✅ |
-| Groovy | ✅ | ✅ |
-| Rust | ✅ | ✅ |
-| Java | ✅ | ✅ |
-| Go | — | ✅ |
+| Linguagem | Map (sigs) | Graph (calls) | Framework router |
+|---|:---:|:---:|:---:|
+| TypeScript / TSX | ✅ | ✅ | **NestJS** ✅ |
+| JavaScript / JSX / MJS / CJS | ✅ | ✅ | — |
+| Python | ✅ | ✅ | — |
+| Ruby | ✅ | ✅ | **Rails** ✅ |
+| Groovy | ✅ | ✅ | **Grails** ✅ |
+| Rust | ✅ | ✅ | — |
+| Java | ✅ | ✅ | — |
+| Go | — | ✅ | — |
 
 #### Framework-aware routing (URL → handler)
 
-Novo módulo `src/pipelines/graph/frameworks/` com trait `FrameworkRouter`. Durante `ctx graph index`, detecta arquivos especiais e injeta símbolos sintéticos `route::METHOD /path` no grafo com call sites ligando à action. Disponíveis:
+Novo módulo `src/pipelines/graph/frameworks/` com trait `FrameworkRouter`. Durante `ctx graph index`, detecta arquivos especiais e injeta símbolos sintéticos `route::METHOD /path` no grafo com call sites ligando à action:
 
-- **Rails** (`config/routes.rb`): suporta `resources` (gera 7+ actions RESTful), `resource`, verb DSL (`get`/`post`/`put`/`patch`/`delete`/`match`) com `to: 'controller#action'` ou rocket (`=> 'ctrl#act'`), e `namespace` prefixando o path.
-- **Grails** (`UrlMappings.groovy`): explicit mappings `"/url"(controller: ..., action: ..., method: ...)` + `resources: "name"` gerando 5 ações.
-- **NestJS** (`*.ts` com `@Controller` + decorators de verbo): `@Controller('/prefix')` combinado com `@Get(':id')`/`@Post()`/`@Patch(...)` etc, capturando classe + nome do método.
+- **Rails** (`config/routes.rb`): `resources` (7+ actions RESTful), `resource`, verb DSL (`get`/`post`/`put`/`patch`/`delete`/`match`) com `to: 'ctrl#act'` ou rocket (`=> 'ctrl#act'`), `namespace` prefixando o path.
+- **Grails** (`UrlMappings.groovy`): explicit mappings `"/url"(controller: ..., action: ..., method: ...)` + `resources: "name"` gerando 5 actions. Normaliza `$id` → `:id`.
+- **NestJS** (`*.ts` com `@Controller`): combina `@Controller('/prefix')` + `@Get(':id')`/`@Post()`/`@Patch(...)` etc, capturando `ClassName::method` como handler.
 
-Resultado: `ctx graph callers show` em projeto Rails/Grails retorna as rotas que apontam para a action; `ctx graph node "route::ANY /users/:id"` retorna o source de mapeamento.
+Resultado prático: `ctx graph callers show` em projeto Rails/Grails retorna as rotas que mapeiam para a action; `ctx graph node "route::ANY /users/:id"` retorna o source do mapeamento.
 
-#### Outros
+#### Claude Desktop installer
 
-- `ClaudeDesktopInstaller` (já listado anteriormente)
-- 22 novos testes (+11 frameworks + +11 extractors novos)
+`ClaudeDesktopInstaller` (`src/integrations/agents/claude_desktop.rs`) instala MCP server `ctx` no app Claude Desktop. **Diferencial único:** zero concorrentes (RTK, CodeGraph, Context Mode, QMD) tem installer automático para Desktop. QMD chega mais perto com snippet manual macOS-only.
+
+- CLI: `ctx install --agent claude-desktop` + `ctx uninstall --agent claude-desktop`
+- Path resolution cross-platform via `dirs::config_dir()`:
+  - Linux: `~/.config/Claude/claude_desktop_config.json`
+  - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+- Preserva o arquivo quando ele ainda tem `preferences` do usuário (diferente do Claude Code installer que apaga arquivos que ficam vazios).
+
+#### Roadmap formal
+
+- `docs/v0.2-roadmap.md` documenta as 5 fases do plano completo para zerar gap vs CodeGraph (~12k LOC total). Esta release entrega: Fase B parcial (linguagens prioritárias) + Fase D parcial (3 frameworks centrais) + Fase E parcial (Claude Desktop).
 
 ### Changed
 
 - `SUPPORTED_EXTS` do scanner expandido para `.rs/.java/.js/.jsx`
 - `GRAPH_EXTS` expandido para `.groovy/.gradle/.js/.jsx/.mjs/.cjs`
 - `ext_to_lang` retorna `rust`/`java`/`javascript` para extensões correspondentes
+- `AgentName` enum tem variante `ClaudeDesktop` (CLI: `--agent claude-desktop`)
+- `installer_for()` despacha para `ClaudeDesktopInstaller`
 
 ### Performance
 
-- Indexação em paralelo via `rayon` continua dominando o tempo; framework routing adiciona < 5% de overhead por arquivo (regex+split em arquivos de rota são pequenos)
-
-### Added (anterior)
-
-- `ClaudeDesktopInstaller` (`src/integrations/agents/claude_desktop.rs`) — instala MCP server `ctx` no app Claude Desktop. Diferencial vs concorrentes: zero deles (RTK, CodeGraph, Context Mode, QMD) tem installer automático para Desktop; QMD chega mais perto com snippet manual macOS-only
-- CLI `ctx install --agent claude-desktop` + `ctx uninstall --agent claude-desktop`
-- Path resolution cross-platform via `dirs::config_dir()`:
-  - Linux: `~/.config/Claude/claude_desktop_config.json`
-  - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-  - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
-- 5 testes de integração novos cobrindo install/uninstall/preservação de preferences/idempotência/detecção de app ausente
-
-### Changed
-
-- `AgentName` enum agora tem variante `ClaudeDesktop` (CLI: `--agent claude-desktop`)
-- `installer_for()` despacha para `ClaudeDesktopInstaller`
+- Indexação em paralelo via `rayon` continua dominando o tempo
+- Framework routing adiciona < 5% de overhead por arquivo (regex + split em arquivos de rota são pequenos)
 
 ### Notes
 
-- Claude Desktop não suporta hooks `PreToolUse` (só MCP servers), por isso o installer escreve apenas o bloco `mcpServers`
-- Uninstall preserva o arquivo quando ele ainda tem `preferences` do usuário (diferente do Claude Code installer que apaga arquivos que ficam vazios)
+- Claude Desktop não suporta hooks `PreToolUse` (só MCP servers), por isso o installer só escreve o bloco `mcpServers`
+- 282 tests passing (+22 vs v0.1.0): 16 novos testes de map extractors + 3 novos de graph extractors + 11 novos de framework routers + 5 novos do Claude Desktop installer
+- clippy `-D warnings` + `cargo fmt --check` limpos
 
 ## [0.1.0] - 2026-05-25
 
