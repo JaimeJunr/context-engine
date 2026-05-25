@@ -59,13 +59,11 @@ fn walk_sigs(node: Node, src: &[u8], depth: usize, sigs: &mut Vec<String>) {
                 sigs.push(format!("{}  def {}{}", pad, src_slice(name, src), params));
             }
         }
-        "field_declaration" => {
-            if depth > 0 {
-                let text = src_slice(node, src);
-                let first_line = text.split('\n').next().unwrap_or("").trim().to_string();
-                if !first_line.is_empty() {
-                    sigs.push(format!("{}  {}", pad, first_line));
-                }
+        "field_declaration" if depth > 0 => {
+            let text = src_slice(node, src);
+            let first_line = text.split('\n').next().unwrap_or("").trim().to_string();
+            if !first_line.is_empty() {
+                sigs.push(format!("{}  {}", pad, first_line));
             }
         }
         _ => {}

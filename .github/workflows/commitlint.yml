@@ -25,7 +25,16 @@ jobs:
       - name: Install cocogitto
         uses: cocogitto/cocogitto-action@v3
         with:
-          check-latest-tag-only: true
+          # `check-latest-tag-only: true` falha quando não há tag ainda
+          # (caso do primeiro release). Validamos manualmente abaixo.
+          check: false
 
       - name: Check commit messages
-        run: cog check --from-latest-tag
+        shell: bash
+        run: |
+          if git describe --tags --abbrev=0 >/dev/null 2>&1; then
+            echo "Found tag: validating commits since $(git describe --tags --abbrev=0)"
+            cog check --from-latest-tag
+          else
+            echo "No tag yet — skipping cog check for the first release"
+          fi
