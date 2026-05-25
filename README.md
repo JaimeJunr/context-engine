@@ -1,6 +1,7 @@
 # ctx — Context Engine
 
 [![Crates.io](https://img.shields.io/crates/v/ctx-engine.svg)](https://crates.io/crates/ctx-engine)
+[![Docs](https://img.shields.io/badge/docs-jaimejunr.github.io%2Fcontext--engine-blue)](https://jaimejunr.github.io/context-engine/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://rustup.rs/)
 [![Tests](https://img.shields.io/badge/tests-271%20passing-green.svg)](#desenvolvimento)
@@ -9,6 +10,8 @@
 > **Maintainers e AI agents:** leia [`CLAUDE.md`](CLAUDE.md) antes de fazer qualquer mudança.
 
 CLI Rust que dá ao seu agente de codificação **mapas curados de repositório**, **busca semântica em docs**, **compressão de output**, **grafo de chamadas em 7 linguagens** e **integração via MCP/hooks** — tudo em um único binário 100% local.
+
+🌐 **Site oficial:** **<https://jaimejunr.github.io/context-engine/>**
 
 ## Install
 
