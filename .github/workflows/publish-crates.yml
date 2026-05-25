@@ -1,0 +1,28 @@
+name: publish-crates
+
+# Publica em crates.io quando uma tag vX.Y.Z é pushada.
+# Requer secret CARGO_REGISTRY_TOKEN nas configurações do repo.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache target/
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked

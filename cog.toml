@@ -1,0 +1,42 @@
+# cocogitto (https://docs.cocogitto.io) — linter de Conventional Commits Rust-native.
+#
+# Uso:
+#   cog check                              # valida histórico desde a última tag
+#   cog verify "feat(graph): add tracer"   # valida um commit message antes
+#
+# Integração:
+#   - lefthook commit-msg hook (local) chama `cog verify-message`.
+#   - CI (.github/workflows/commitlint.yml) chama `cog check` em PRs.
+
+# Política de tag — bate com cliff.toml e release-plz.
+tag_prefix = "v"
+
+# Permite merges e reverts sem enforcement estrito.
+ignore_merge_commits = true
+
+# Branches válidas para validação de histórico.
+branch_whitelist = ["main", "release-plz/*", "ci/*", "chore/*", "fix/*", "feat/*", "docs/*", "refactor/*"]
+
+post_bump_hooks = []
+
+# Tipos de commit aceitos.
+[commit_types]
+feat = { changelog_title = "Features" }
+fix = { changelog_title = "Bug Fixes" }
+perf = { changelog_title = "Performance" }
+refactor = { changelog_title = "Refactoring" }
+docs = { changelog_title = "Documentation" }
+test = { changelog_title = "Tests" }
+build = { changelog_title = "Build System" }
+ci = { changelog_title = "Continuous Integration" }
+chore = { changelog_title = "Chores" }
+revert = { changelog_title = "Reverts" }
+style = { changelog_title = "Style" }
+
+# Changelog template para `cog changelog`.
+[changelog]
+authors = []
+template = "remote"
+remote = "github.com"
+repository = "context-mode"
+owner = "JaimeJunr"

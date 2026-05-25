@@ -1,0 +1,31 @@
+name: commitlint
+
+# Valida que commits em PRs e na main seguem Conventional Commits.
+# Usa cocogitto (cog), o mesmo linter que roda no pre-commit local via lefthook.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  cog-check:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # cog precisa de histórico para comparar com a última tag
+
+      - name: Install cocogitto
+        uses: cocogitto/cocogitto-action@v3
+        with:
+          check-latest-tag-only: true
+
+      - name: Check commit messages
+        run: cog check --from-latest-tag

@@ -3,6 +3,16 @@ name = "context-engine"
 version = "0.1.0"
 edition = "2021"
 default-run = "ctx"
+description = "All-in-one Rust toolkit for Claude Code & MCP agents: auto-rewrite hooks, MCP server, repo maps with BM25+PageRank, call graphs in 7 languages, local RAG search. Single binary, 100% local."
+authors = ["Jaime Junior <jaimeodairbassojuniorjaime@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/JaimeJunr/context-mode"
+homepage = "https://github.com/JaimeJunr/context-mode"
+documentation = "https://github.com/JaimeJunr/context-mode/tree/main/docs"
+keywords = ["mcp", "claude-code", "llm", "agents", "code-search"]
+categories = ["command-line-utilities", "development-tools"]
+rust-version = "1.70"
 
 [[bin]]
 name = "ctx"
@@ -53,3 +63,25 @@ cc = "1.0"
 opt-level = 3
 lto = true
 codegen-units = 1
+
+# Profile usado pelo cargo-dist nos artefatos de release.
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Configuração do cargo-dist (https://opensource.axo.dev/cargo-dist/).
+# Gera binários cross-platform e instaladores curl/powershell em GitHub Releases.
+[workspace.metadata.dist]
+cargo-dist-version = "0.28.0"
+ci = "github"
+installers = ["shell", "powershell"]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+pr-run-mode = "plan"
+# Profile de release usado.
+dist-profile = "dist"

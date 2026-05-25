@@ -8,6 +8,14 @@ pre-commit:
       glob: "*.rs"
       run: cargo clippy --all-targets --all-features -- -D warnings
 
+commit-msg:
+  commands:
+    cog-verify:
+      # Valida que a mensagem segue Conventional Commits.
+      # Instalar: `cargo install --locked cocogitto`
+      # Pular (não recomendado): `git commit --no-verify`
+      run: cog verify --file {1}
+
 pre-push:
   commands:
     test:
