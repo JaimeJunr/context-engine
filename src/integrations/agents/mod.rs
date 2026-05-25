@@ -5,6 +5,7 @@ use anyhow::Result;
 use clap::ValueEnum;
 
 pub mod claude_code;
+pub mod claude_desktop;
 pub mod hook_handlers;
 pub mod settings_merge;
 
@@ -25,6 +26,8 @@ pub enum Scope {
 pub enum AgentName {
     #[value(name = "claude-code")]
     ClaudeCode,
+    #[value(name = "claude-desktop")]
+    ClaudeDesktop,
 }
 
 /// Contrato que cada agente deve cumprir para ser instalável via `ctx`.
@@ -58,5 +61,6 @@ pub struct UninstallReport {
 pub fn installer_for(agent: AgentName) -> Box<dyn AgentInstaller> {
     match agent {
         AgentName::ClaudeCode => Box::new(claude_code::ClaudeCodeInstaller),
+        AgentName::ClaudeDesktop => Box::new(claude_desktop::ClaudeDesktopInstaller),
     }
 }

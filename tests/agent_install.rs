@@ -247,3 +247,141 @@ fn install_sem_diretorio_claude_em_user_scope_falha_com_mensagem() {
         stderr
     );
 }
+
+// =========================================================================
+// Claude Desktop installer
+// =========================================================================
+
+/// Roda `ctx <args>` com XDG_CONFIG_HOME apontando para um tempdir.
+/// dirs::config_dir() em Linux respeita XDG_CONFIG_HOME.
+fn run_with_xdg_config(xdg: &std::path::Path, args: &[&str]) -> std::process::Output {
+    Command::new(ctx_bin())
+        .env("XDG_CONFIG_HOME", xdg)
+        .args(args)
+        .output()
+        .expect("falha ao executar ctx")
+}
+
+#[test]
+fn desktop_install_cria_mcp_server_em_local_correto() {
+    let tmp = tempfile::tempdir().unwrap();
+    let xdg = tmp.path();
+    std::fs::create_dir_all(xdg.join("Claude")).unwrap();
+
+    let out = run_with_xdg_config(xdg, &["install", "--agent", "claude-desktop"]);
+    assert!(
+        out.status.success(),
+        "install desktop falhou: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    let path = xdg.join("Claude").join("claude_desktop_config.json");
+    assert!(path.exists(), "claude_desktop_config.json deve existir");
+
+    let s = read_settings(&path);
+    let entry = &s["mcpServers"]["ctx"];
+    assert_eq!(entry["command"], "ctx");
+    assert_eq!(entry["args"], json!(["mcp", "serve"]));
+    assert_eq!(entry["_installer"], "ctx");
+}
+
+#[test]
+fn desktop_install_preserva_preferences_existentes() {
+    let tmp = tempfile::tempdir().unwrap();
+    let xdg = tmp.path();
+    let dir = xdg.join("Claude");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("claude_desktop_config.json");
+
+    // Usuário tem preferences ricas + outro MCP server.
+    let pre = json!({
+        "preferences": {
+            "dockBounceEnabled": true,
+            "sidebarMode": "epitaxy",
+            "customNested": { "deep": ["a", "b"] }
+        },
+        "mcpServers": {
+            "outro": { "command": "/usr/bin/outro", "args": [] }
+        }
+    });
+    std::fs::write(&path, serde_json::to_string_pretty(&pre).unwrap()).unwrap();
+
+    run_with_xdg_config(xdg, &["install", "--agent", "claude-desktop"]);
+
+    let s = read_settings(&path);
+    // ctx adicionado
+    assert_eq!(s["mcpServers"]["ctx"]["command"], "ctx");
+    // outro mcp server preservado
+    assert_eq!(s["mcpServers"]["outro"]["command"], "/usr/bin/outro");
+    // preferences intactas (incluindo nested)
+    assert_eq!(s["preferences"]["dockBounceEnabled"], true);
+    assert_eq!(s["preferences"]["sidebarMode"], "epitaxy");
+    assert_eq!(s["preferences"]["customNested"]["deep"][1], "b");
+}
+
+#[test]
+fn desktop_uninstall_remove_apenas_entrada_do_ctx() {
+    let tmp = tempfile::tempdir().unwrap();
+    let xdg = tmp.path();
+    let dir = xdg.join("Claude");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("claude_desktop_config.json");
+
+    let pre = json!({
+        "preferences": { "foo": "bar" },
+        "mcpServers": {
+            "other-tool": { "command": "other", "args": [] }
+        }
+    });
+    std::fs::write(&path, serde_json::to_string_pretty(&pre).unwrap()).unwrap();
+
+    run_with_xdg_config(xdg, &["install", "--agent", "claude-desktop"]);
+    run_with_xdg_config(xdg, &["uninstall", "--agent", "claude-desktop"]);
+
+    let s = read_settings(&path);
+    assert!(s["mcpServers"].get("ctx").is_none(), "ctx deve sumir");
+    assert_eq!(
+        s["mcpServers"]["other-tool"]["command"], "other",
+        "outros mcp servers permanecem"
+    );
+    assert_eq!(s["preferences"]["foo"], "bar", "preferences preservadas");
+}
+
+#[test]
+fn desktop_install_duplicado_e_no_op() {
+    let tmp = tempfile::tempdir().unwrap();
+    let xdg = tmp.path();
+    std::fs::create_dir_all(xdg.join("Claude")).unwrap();
+
+    run_with_xdg_config(xdg, &["install", "--agent", "claude-desktop"]);
+    run_with_xdg_config(xdg, &["install", "--agent", "claude-desktop"]);
+
+    let path = xdg.join("Claude").join("claude_desktop_config.json");
+    let s = read_settings(&path);
+    let mcp = s["mcpServers"].as_object().unwrap();
+    assert_eq!(
+        mcp.len(),
+        1,
+        "install duas vezes não deve duplicar (esperado 1 entrada, achei {})",
+        mcp.len()
+    );
+}
+
+#[test]
+fn desktop_install_sem_diretorio_claude_falha_com_mensagem() {
+    let tmp = tempfile::tempdir().unwrap();
+    let xdg = tmp.path();
+    // XDG_CONFIG_HOME existe mas Claude/ NÃO existe
+
+    let out = run_with_xdg_config(xdg, &["install", "--agent", "claude-desktop"]);
+    assert!(
+        !out.status.success(),
+        "deve falhar quando Claude Desktop não está instalado"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("Claude Desktop") || stderr.contains("Claude"),
+        "mensagem deve apontar o problema: {}",
+        stderr
+    );
+}
