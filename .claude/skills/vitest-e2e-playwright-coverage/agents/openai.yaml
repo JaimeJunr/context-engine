@@ -1,3 +1,0 @@
-interface:
-  display_name: "Vitest, E2E (Playwright) e cobertura 75%"
-  short_description: "Guiar implementação de testes frontend com Vitest, Playwright e cobertura mínima de 75%."

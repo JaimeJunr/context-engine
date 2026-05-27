@@ -1,3 +1,0 @@
-interface:
-  display_name: "Engineering Ticket"
-  short_description: "Plain-text tickets for Jira/backlog handoff"

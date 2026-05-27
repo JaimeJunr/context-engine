@@ -1,3 +1,0 @@
-interface:
-  display_name: "Backend: unitário, integração e E2E"
-  short_description: "Definir stack e práticas de testes de backend (agnóstico), com Playwright no E2E e exemplos JS e Java."

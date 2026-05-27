@@ -1,3 +1,0 @@
-interface:
-  display_name: "OpenAPI — padrões Ivt (agnóstico)"
-  short_description: "OpenAPI 3: tags por módulo, required/schemas, security real; api-ivt-docs só referência opcional."
