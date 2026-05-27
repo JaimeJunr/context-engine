@@ -24,22 +24,31 @@ src/
 │   │   ├── searcher.rs        Busca vetorial
 │   │   └── reranker.rs        Re-ranking contextual
 │   │
-│   └── exec/                  Compressão de output de comandos
-│       ├── mod.rs             API pública (run_proxy)
-│       ├── pipeline.rs        8 estágios de filtragem
-│       ├── registry.rs        Dispatch comando → filtro
-│       ├── filters/           Filtros por família (git, cargo, docker…)
-│       └── metrics.rs         Telemetria de economia
+│   ├── exec/                  Compressão de output de comandos
+│   │   ├── mod.rs             API pública (run_proxy)
+│   │   ├── pipeline.rs        8 estágios de filtragem
+│   │   ├── registry.rs        Dispatch comando → filtro
+│   │   ├── filters/           Filtros por família (git, cargo, docker…)
+│   │   └── metrics.rs         Telemetria de economia
+│   │
+│   └── graph/                 Grafo de símbolos e chamadas semânticas (novo)
+│       ├── mod.rs             Indexação paralela & API pública
+│       ├── extractor.rs       Extração via Tree-Sitter (8 linguagens)
+│       ├── store.rs           Persistência SQLite
+│       ├── query.rs           Navegação por BFS (callers, trace, impact)
+│       ├── types.rs           Símbolos e call sites
+│       └── frameworks/        Framework-aware routing (Rails, Grails, NestJS)
 │
 ├── integrations/              INTERFACES EXTERNAS
-│   ├── agents/                Hooks Claude Code (e futuros Cursor, Codex…)
+│   ├── agents/                Instaladores para agentes (Claude Code/Desktop...)
 │   │   ├── mod.rs             Trait AgentInstaller
 │   │   ├── claude_code.rs     Impl Claude Code (hook + mcpServer)
+│   │   ├── claude_desktop.rs  Impl Claude Desktop (mcpServer)
 │   │   ├── hook_handlers.rs   Handler de `ctx __hook`
 │   │   └── settings_merge.rs  Helpers JSON (idempotente)
 │   └── mcp/                   MCP server expondo pipelines como tools
-│       ├── mod.rs             Entry point: serve() + tool_names()
-│       └── server.rs          CtxServer + 4 tools (ctx_exec, ctx_search, ctx_map, ctx_list)
+│       ├── mod.rs             Entry point: serve()
+│       └── server.rs          CtxServer + 10 tools (exec, search, map, list, graph_index e navigation)
 │
 └── shared/                    UTILITÁRIOS CROSS-CUTTING
     ├── cache.rs               SQLite cache em ~/.cache/context_engine/
@@ -65,9 +74,9 @@ A separação permite, no futuro, virar Cargo workspace (`ctx-shared`, `ctx-pipe
 |---------|-------------|
 | RRF (fusão BM25 + vetorial) | `pipelines/catalog/rrf.rs` |
 | Query expansion | `pipelines/catalog/query_expansion.rs` |
-| Call graph (callers/callees) | `pipelines/map/graph.rs` |
+| Grafo de chamadas (novas linguagens/frameworks) | `pipelines/graph/` |
 | Cursor/Codex/opencode installers | `integrations/agents/<nome>.rs` |
-| MCP server | `integrations/mcp/` ✅ entregue |
+| MCP server | `integrations/mcp/` ✅ entregue (10 tools) |
 | Session continuity | `integrations/session/` |
 | Telemetria | `shared/telemetry.rs` |
 

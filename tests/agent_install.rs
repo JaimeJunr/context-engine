@@ -250,10 +250,18 @@ fn install_sem_diretorio_claude_em_user_scope_falha_com_mensagem() {
 
 // =========================================================================
 // Claude Desktop installer
+//
+// Os testes abaixo dependem de XDG_CONFIG_HOME para isolar o config.
+// Em macOS `dirs::config_dir()` resolve para `~/Library/Application Support`
+// e ignora XDG_CONFIG_HOME; em Windows resolve para `%APPDATA%`. Para evitar
+// false-positives no CI, restringimos esses testes a Linux. A lógica
+// cross-platform do installer continua coberta pelos unit tests em
+// `src/integrations/agents/claude_desktop.rs` (que mockam o path).
 // =========================================================================
 
 /// Roda `ctx <args>` com XDG_CONFIG_HOME apontando para um tempdir.
 /// dirs::config_dir() em Linux respeita XDG_CONFIG_HOME.
+#[cfg(target_os = "linux")]
 fn run_with_xdg_config(xdg: &std::path::Path, args: &[&str]) -> std::process::Output {
     Command::new(ctx_bin())
         .env("XDG_CONFIG_HOME", xdg)
@@ -262,6 +270,7 @@ fn run_with_xdg_config(xdg: &std::path::Path, args: &[&str]) -> std::process::Ou
         .expect("falha ao executar ctx")
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn desktop_install_cria_mcp_server_em_local_correto() {
     let tmp = tempfile::tempdir().unwrap();
@@ -285,6 +294,7 @@ fn desktop_install_cria_mcp_server_em_local_correto() {
     assert_eq!(entry["_installer"], "ctx");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn desktop_install_preserva_preferences_existentes() {
     let tmp = tempfile::tempdir().unwrap();
@@ -319,6 +329,7 @@ fn desktop_install_preserva_preferences_existentes() {
     assert_eq!(s["preferences"]["customNested"]["deep"][1], "b");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn desktop_uninstall_remove_apenas_entrada_do_ctx() {
     let tmp = tempfile::tempdir().unwrap();
@@ -347,6 +358,7 @@ fn desktop_uninstall_remove_apenas_entrada_do_ctx() {
     assert_eq!(s["preferences"]["foo"], "bar", "preferences preservadas");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn desktop_install_duplicado_e_no_op() {
     let tmp = tempfile::tempdir().unwrap();
@@ -367,6 +379,7 @@ fn desktop_install_duplicado_e_no_op() {
     );
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn desktop_install_sem_diretorio_claude_falha_com_mensagem() {
     let tmp = tempfile::tempdir().unwrap();

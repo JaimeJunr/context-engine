@@ -4,12 +4,12 @@
 [![Docs](https://img.shields.io/badge/docs-jaimejunr.github.io%2Fcontext--engine-blue)](https://jaimejunr.github.io/context-engine/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://rustup.rs/)
-[![Tests](https://img.shields.io/badge/tests-271%20passing-green.svg)](#desenvolvimento)
+[![Tests](https://img.shields.io/badge/tests-282%20passing-green.svg)](#desenvolvimento)
 [![Release](https://img.shields.io/github/v/release/JaimeJunr/context-engine)](https://github.com/JaimeJunr/context-engine/releases)
 
 > **Maintainers e AI agents:** leia [`CLAUDE.md`](CLAUDE.md) antes de fazer qualquer mudança.
 
-CLI Rust que dá ao seu agente de codificação **mapas curados de repositório**, **busca semântica em docs**, **compressão de output**, **grafo de chamadas em 7 linguagens** e **integração via MCP/hooks** — tudo em um único binário 100% local.
+CLI Rust que dá ao seu agente de codificação **mapas curados de repositório**, **busca semântica em docs**, **compressão de output**, **grafo de chamadas em 8 linguagens** e **integração via MCP/hooks** — tudo em um único binário 100% local.
 
 🌐 **Site oficial:** **<https://jaimejunr.github.io/context-engine/>**
 
@@ -80,8 +80,8 @@ O único CLI que cobre **4 eixos competitivos** em um binário Rust único, 100%
 | 100% local (sem API externa) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Single binary Rust nativo | ✅ | ✅ | ❌ (TS) | ❌ (TS) | ❌ (TS) |
 | Cobertura de comandos exec | **17 famílias** | 100+ comandos | n/a | parcial | n/a |
-| Linguagens (grafo) | **7** (TS, Py, Rb, Go, Rust, Java, Groovy) | n/a | 19+ | n/a | 5 (AST) |
-| Multi-agente installer | 1 (Claude Code) | 13 | 5 | 15 | parcial |
+| Linguagens (grafo) | **8** (TS, JS, Py, Rb, Go, Rust, Java, Groovy) | n/a | 19+ | n/a | 5 (AST) |
+| Multi-agente installer | 2 (Claude Code, Claude Desktop) | 13 | 5 | 15 | parcial |
 | Stars (referência) | — | 53k | 22k | 15.5k | 25.5k |
 
 **Onde ganhamos clarissimamente:**
@@ -93,9 +93,9 @@ O único CLI que cobre **4 eixos competitivos** em um binário Rust único, 100%
 
 **Onde estamos atrás (assumido, com plano):**
 - Cobertura de comandos do `exec` (17 famílias vs 100+ do RTK) — ver [análise](docs/competitors/rtk.md) e roadmap.
-- Multi-agente installer (só Claude Code hoje; trait `AgentInstaller` pronto para Cursor/Codex/opencode).
-- Linguagens no grafo (7 vs 19+ do CodeGraph — falta C#, PHP, Swift, Kotlin, Scala, Dart, Svelte, Vue, Lua).
-- Dispatch dinâmico / herança / framework routing (URL → handler) — CodeGraph faz, nós não.
+- Multi-agente installer (Claude Code e Claude Desktop; trait `AgentInstaller` pronto para Cursor/Codex/opencode).
+- Linguagens no grafo (8 vs 19+ do CodeGraph — falta C#, PHP, Swift, Kotlin, Scala, Dart, Svelte, Vue, Lua).
+- Dispatch dinâmico / herança — CodeGraph faz, nós não. (Framework-aware routing inicial entregue para NestJS, Rails, Grails).
 - Live file watcher — re-indexamos sob demanda, não automaticamente.
 
 ### Cobertura `ctx exec` (17 famílias)
@@ -122,7 +122,7 @@ O único CLI que cobre **4 eixos competitivos** em um binário Rust único, 100%
 - **`ctx map`** — repo map curado: extrai assinaturas via Tree-Sitter, ranqueia com BM25 + Personalized PageRank, respeita `.gitignore`, output em texto/JSON dentro de orçamento de tokens.
 - **`ctx catalog`** — RAG local: indexa documentação, gera embeddings via endpoint OpenAI-compatible (Ollama, etc), busca por intenção.
 - **`ctx exec`** — proxy universal: aplica filtros de compressão por família (git, cargo, npm, docker, kubectl, aws, gh, gradle, maven, pytest, etc), persiste métricas.
-- **`ctx graph`** — grafo de símbolos resolvido (callers/callees/trace/impact/node) em 7 linguagens. **Resultados ranqueados** por relevância à query e respeitam token budget.
+- **`ctx graph`** — grafo de símbolos resolvido (callers/callees/trace/impact/node) em 8 linguagens. **Resultados ranqueados** por relevância à query e respeitam token budget.
 - **`ctx install --agent claude-code`** — configura hook PreToolUse (auto-rewrite de `git status` → `ctx exec git status`) **e** MCP server (`ctx_exec`, `ctx_search`, `ctx_map`, `ctx_list`) num único comando idempotente.
 - **`ctx mcp serve`** — MCP server stdio expondo 4 tools com schema JSON gerado via `rmcp` + `schemars`.
 - **Arquitetura modular** com 3 camadas (`pipelines/`, `integrations/`, `shared/`) preparada para crescer sem virar mono-arquivo.
@@ -252,7 +252,7 @@ ignore_extra = ["**/fixtures/**"]
 ## Desenvolvimento
 
 ```bash
-cargo test --locked --all-features                       # 214 testes
+cargo test --locked --all-features                       # 282 testes
 cargo clippy --all-targets --all-features -- -D warnings # lint estrito
 cargo fmt -- --check                                     # formatação
 cargo run -- map --help                                  # ajuda dos subcomandos
