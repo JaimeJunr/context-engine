@@ -50,6 +50,11 @@ Comprime output de comandos shell mantendo essencial, economizando tokens.
 - **[Configuration](exec/configuration.md)** — Customização
 - **[Metrics](exec/metrics.md)** — Rastreamento de economia
 
+### [`ctx graph`](graph/README.md) — Grafo de Chamadas Semântico
+Mapeamento e navegação de fluxo e símbolos (callers, callees, trace, impact).
+
+- **[Overview](graph/README.md)** — Como funciona, subcomandos e framework routing
+
 ---
 
 ## 🏗️ Arquitetura & Extensão
@@ -103,6 +108,8 @@ docs/
 │   ├── filtering-pipeline.md
 │   ├── configuration.md
 │   └── metrics.md
+├── graph/                         ← Subcomando `ctx graph`
+│   └── README.md
 ├── architecture/                  ← Design interno
 │   ├── README.md
 │   ├── pipelines.md
@@ -127,6 +134,7 @@ docs/
 | **Usar `ctx map`** | [map/README.md](map/README.md) | [map/how-it-works.md](map/how-it-works.md) |
 | **Usar `ctx search`** | [search/README.md](search/README.md) | [search/overview.md](search/overview.md) |
 | **Usar `ctx exec`** | [exec/overview.md](exec/overview.md) | [exec/configuration.md](exec/configuration.md) |
+| **Usar `ctx graph`** | [graph/README.md](graph/README.md) | [graph/README.md](graph/README.md) |
 | **Entender projeto** | [guides/vision.md](guides/vision.md) | [architecture/README.md](architecture/README.md) |
 | **Implementar feature** | [architecture/design-patterns.md](architecture/design-patterns.md) | Código + testes |
 | **Adicionar linguagem** | [architecture/extending.md](architecture/extending.md) | `src/pipelines/map/extractors/<lang>.rs` |

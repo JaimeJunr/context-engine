@@ -14,11 +14,14 @@ Resultado prático: o agente roda `git status` normalmente; o hook reescreve par
 | Agente | Status | Escopo padrão |
 |--------|--------|---------------|
 | Claude Code | ✅ disponível | `~/.claude/settings.json` |
+| Claude Desktop | ✅ disponível | `~/*.../claude_desktop_config.json` |
 | Cursor | 🚧 próxima entrega | — |
 | Codex CLI | 🚧 próxima entrega | — |
 | opencode | 🚧 próxima entrega | — |
 
 ## Uso
+
+### Claude Code
 
 ```bash
 # Instala no escopo de usuário (~/.claude/settings.json) — afeta todos os projetos
@@ -32,6 +35,16 @@ ctx uninstall --agent claude-code
 
 # Remove só do projeto
 ctx uninstall --agent claude-code --project
+```
+
+### Claude Desktop
+
+```bash
+# Instala no aplicativo Claude Desktop
+ctx install --agent claude-desktop
+
+# Remove do aplicativo Claude Desktop
+ctx uninstall --agent claude-desktop
 ```
 
 Reinicie sessões abertas do agente para o hook entrar em vigor.
@@ -68,7 +81,7 @@ O campo `_installer: "ctx"` é o **marcador de propriedade**: o `uninstall` remo
 
 ## Tools MCP expostas
 
-Quando o agente cliente conecta via MCP, vê estas 4 tools:
+Quando o agente cliente conecta via MCP, vê estas **10 tools**:
 
 | Tool | Função |
 |---|---|
@@ -76,6 +89,12 @@ Quando o agente cliente conecta via MCP, vê estas 4 tools:
 | `ctx_search` | Busca semântica em acervo do catalog (`collection`, `query`, `top_k`) |
 | `ctx_map` | Gera repo map curado (`title`, `dirs`, `max_tokens`…) |
 | `ctx_list` | Lista acervos catalogados disponíveis |
+| `ctx_graph_index` | Indexa diretórios populando o grafo de símbolos |
+| `ctx_callers` | Busca chamadores de um símbolo com relevância e budget de tokens |
+| `ctx_callees` | Busca símbolos chamados a partir de um identificador qualificado |
+| `ctx_trace` | Retorna a cadeia de callers até `depth` níveis |
+| `ctx_impact` | Lista código impactado por mudanças (callers diretos e indiretos) |
+| `ctx_node` | Localiza as definições de um símbolo no grafo |
 
 Schemas de input são gerados automaticamente via `schemars` (validados no cliente antes da chamada).
 

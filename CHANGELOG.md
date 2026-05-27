@@ -58,13 +58,23 @@ Resultado prático: `ctx graph callers show` em projeto Rails/Grails retorna as 
 
 - `docs/v0.2-roadmap.md` documenta as 5 fases do plano completo para zerar gap vs CodeGraph (~12k LOC total). Esta release entrega: Fase B parcial (linguagens prioritárias) + Fase D parcial (3 frameworks centrais) + Fase E parcial (Claude Desktop).
 
+#### Astro Starlight Documentation & Landing Page
+
+- Novo site de documentação e landing page de alta performance construído com Astro Starlight sob `site/`.
+- Pipeline de deploy automático para GitHub Pages configurado via GitHub Actions em `.github/workflows/deploy-site.yml`.
+- Forçado uso do registro público do npm no setup do site (workaround para ~/.npmrc corporativo).
+
 ### Changed
 
+- **Rebranding do Projeto:** Renomeado o crate de `context-mode` para `ctx-engine` e referências do repositório GitHub para `context-engine`.
 - `SUPPORTED_EXTS` do scanner expandido para `.rs/.java/.js/.jsx`
 - `GRAPH_EXTS` expandido para `.groovy/.gradle/.js/.jsx/.mjs/.cjs`
 - `ext_to_lang` retorna `rust`/`java`/`javascript` para extensões correspondentes
 - `AgentName` enum tem variante `ClaudeDesktop` (CLI: `--agent claude-desktop`)
 - `installer_for()` despacha para `ClaudeDesktopInstaller`
+- Atualizada infraestrutura de CI/CD para usar runners `ubuntu-22.04` (antes `ubuntu-20.04`).
+- Atualizado `cargo-dist` de `0.28.0` para `0.32.0` no workflow de release.
+- Tolerância adicionada ao commitlint para commits sem tag corporativa e correção de lints Clippy (`collapsible_match`).
 
 ### Performance
 
